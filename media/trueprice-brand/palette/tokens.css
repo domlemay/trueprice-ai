@@ -1,0 +1,189 @@
+/* ============================================================
+   TRUEPRICE AI — BRAND COLOR PALETTE & DESIGN TOKENS
+   Version 1.0 — Mai 2026
+   ============================================================ */
+
+/* ============================================================
+   1. COULEURS PRIMAIRES
+   ============================================================ */
+:root {
+  /* — Cyan IA (couleur signature) — */
+  --tp-cyan-50:  #E0FFFE;
+  --tp-cyan-100: #B3FEFA;
+  --tp-cyan-200: #80FDF7;
+  --tp-cyan-300: #4DFFF8;   /* Highlight / Glow */
+  --tp-cyan-400: #00E5DB;
+  --tp-cyan-500: #00D4C8;   /* ★ PRIMAIRE — Logo, CTA, accents */
+  --tp-cyan-600: #00A89E;   /* Hover states */
+  --tp-cyan-700: #0D9488;   /* Version claire (fond blanc) */
+  --tp-cyan-800: #007A72;   /* Actif / pressed */
+  --tp-cyan-900: #005C56;   /* Texte sur fond clair */
+
+  /* — Navy Profond (fond signature dark mode) — */
+  --tp-navy-50:  #E8EDF5;
+  --tp-navy-100: #C5D0E3;
+  --tp-navy-200: #8A9DBE;
+  --tp-navy-300: #4F6A99;
+  --tp-navy-400: #1E3A6E;
+  --tp-navy-500: #132240;
+  --tp-navy-600: #0D2140;   /* Header / Sidebar */
+  --tp-navy-700: #0A1628;   /* ★ FOND DARK — Background principal */
+  --tp-navy-800: #071020;   /* Fond sombre secondaire */
+  --tp-navy-900: #040A14;   /* Fond le plus sombre */
+}
+
+/* ============================================================
+   2. COULEURS SÉMANTIQUES UI
+   ============================================================ */
+:root {
+  /* — Succès / Confirmé — */
+  --tp-success-light: #4CAF7D;
+  --tp-success:       #2D9E5F;
+  --tp-success-dark:  #1A7A45;
+
+  /* — Alerte / Warning — */
+  --tp-warning-light: #FFD166;
+  --tp-warning:       #F5A623;
+  --tp-warning-dark:  #C47F0A;
+
+  /* — Erreur / Danger — */
+  --tp-error-light: #FF6B6B;
+  --tp-error:       #E53935;
+  --tp-error-dark:  #B71C1C;
+
+  /* — Info / Neutre — */
+  --tp-info-light: #64B5F6;
+  --tp-info:       #1976D2;
+  --tp-info-dark:  #0D47A1;
+}
+
+/* ============================================================
+   3. NEUTRES & SURFACES
+   ============================================================ */
+:root {
+  /* — Gris neutres — */
+  --tp-gray-50:  #F8FAFC;
+  --tp-gray-100: #F0F4F8;
+  --tp-gray-200: #E2E8F0;
+  --tp-gray-300: #CBD5E0;
+  --tp-gray-400: #A0AEC0;
+  --tp-gray-500: #718096;
+  --tp-gray-600: #4A5568;
+  --tp-gray-700: #2D3748;
+  --tp-gray-800: #1A202C;
+  --tp-gray-900: #0F141C;
+
+  /* — Blanc & Noir — */
+  --tp-white: #FFFFFF;
+  --tp-black: #040A14;
+}
+
+/* ============================================================
+   4. TOKENS SÉMANTIQUES PAR THÈME
+   ============================================================ */
+
+/* === MODE SOMBRE (défaut) === */
+:root, [data-theme="dark"] {
+  /* Backgrounds */
+  --tp-bg-base:         var(--tp-navy-700);    /* #0A1628 */
+  --tp-bg-elevated:     var(--tp-navy-600);    /* #0D2140 */
+  --tp-bg-overlay:      var(--tp-navy-800);    /* #071020 */
+  --tp-bg-surface:      #0F1E36;
+  --tp-bg-card:         #112040;
+  --tp-bg-input:        #0D1E38;
+
+  /* Borders */
+  --tp-border-default:  rgba(0, 212, 200, 0.15);
+  --tp-border-subtle:   rgba(255, 255, 255, 0.06);
+  --tp-border-strong:   rgba(0, 212, 200, 0.4);
+
+  /* Texte */
+  --tp-text-primary:    #FFFFFF;
+  --tp-text-secondary:  rgba(255, 255, 255, 0.7);
+  --tp-text-muted:      rgba(255, 255, 255, 0.4);
+  --tp-text-accent:     var(--tp-cyan-500);    /* #00D4C8 */
+  --tp-text-inverse:    var(--tp-navy-700);
+
+  /* Accent / Brand */
+  --tp-accent:          var(--tp-cyan-500);    /* #00D4C8 */
+  --tp-accent-hover:    var(--tp-cyan-600);    /* #00A89E */
+  --tp-accent-subtle:   rgba(0, 212, 200, 0.1);
+  --tp-accent-glow:     rgba(0, 212, 200, 0.35);
+
+  /* Interactive */
+  --tp-btn-primary-bg:  var(--tp-cyan-500);
+  --tp-btn-primary-text: var(--tp-navy-700);
+  --tp-btn-primary-hover: var(--tp-cyan-600);
+}
+
+/* === MODE CLAIR === */
+[data-theme="light"] {
+  /* Backgrounds */
+  --tp-bg-base:         #FFFFFF;
+  --tp-bg-elevated:     #F8FAFC;
+  --tp-bg-overlay:      #F0F5FA;
+  --tp-bg-surface:      #FFFFFF;
+  --tp-bg-card:         #F8FBFE;
+  --tp-bg-input:        #F4F7FA;
+
+  /* Borders */
+  --tp-border-default:  rgba(13, 148, 136, 0.2);
+  --tp-border-subtle:   rgba(0, 0, 0, 0.06);
+  --tp-border-strong:   rgba(13, 148, 136, 0.5);
+
+  /* Texte */
+  --tp-text-primary:    var(--tp-navy-700);    /* #0A1628 */
+  --tp-text-secondary:  var(--tp-navy-500);
+  --tp-text-muted:      var(--tp-gray-500);
+  --tp-text-accent:     var(--tp-cyan-700);    /* #0D9488 */
+  --tp-text-inverse:    #FFFFFF;
+
+  /* Accent / Brand */
+  --tp-accent:          var(--tp-cyan-700);    /* #0D9488 */
+  --tp-accent-hover:    var(--tp-cyan-800);    /* #007A72 */
+  --tp-accent-subtle:   rgba(13, 148, 136, 0.08);
+  --tp-accent-glow:     rgba(13, 148, 136, 0.2);
+
+  /* Interactive */
+  --tp-btn-primary-bg:  var(--tp-cyan-700);
+  --tp-btn-primary-text: #FFFFFF;
+  --tp-btn-primary-hover: var(--tp-cyan-800);
+}
+
+/* ============================================================
+   5. TYPOGRAPHIE
+   ============================================================ */
+:root {
+  /* — Font stacks — */
+  --tp-font-display: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  --tp-font-body:    'Segoe UI', system-ui, -apple-system, sans-serif;
+  --tp-font-mono:    'Fira Code', 'JetBrains Mono', 'Consolas', monospace;
+
+  /* — Tailles — */
+  --tp-text-xs:   0.75rem;    /* 12px */
+  --tp-text-sm:   0.875rem;   /* 14px */
+  --tp-text-base: 1rem;       /* 16px */
+  --tp-text-lg:   1.125rem;   /* 18px */
+  --tp-text-xl:   1.25rem;    /* 20px */
+  --tp-text-2xl:  1.5rem;     /* 24px */
+  --tp-text-3xl:  1.875rem;   /* 30px */
+  --tp-text-4xl:  2.25rem;    /* 36px */
+}
+
+/* ============================================================
+   6. ESPACEMENTS & RAYONS
+   ============================================================ */
+:root {
+  --tp-radius-sm:  4px;
+  --tp-radius-md:  8px;
+  --tp-radius-lg:  12px;
+  --tp-radius-xl:  16px;
+  --tp-radius-2xl: 24px;
+  --tp-radius-full: 9999px;
+
+  --tp-shadow-sm:  0 1px 3px rgba(0,0,0,0.3);
+  --tp-shadow-md:  0 4px 12px rgba(0,0,0,0.4);
+  --tp-shadow-lg:  0 8px 24px rgba(0,0,0,0.5);
+  --tp-shadow-glow: 0 0 20px rgba(0, 212, 200, 0.3);
+  --tp-shadow-glow-strong: 0 0 40px rgba(0, 212, 200, 0.5);
+}

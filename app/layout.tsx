@@ -1,0 +1,41 @@
+import type { Metadata } from "next";
+import { Inter } from "next/font/google";
+import "./globals.css";
+
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-inter",
+});
+
+export const metadata: Metadata = {
+  title: "TruePriceAI — Payez le vrai prix. Pas le prix canadien.",
+  description:
+    "Comparez les prix Canada vs USA en tenant compte du taux de change, des taxes et des frais de douane. En temps réel.",
+  keywords: [
+    "comparaison prix Canada USA",
+    "vrai prix",
+    "taux de change",
+    "douanes Canada",
+    "shopping Canada",
+    "TruePriceAI",
+  ],
+  openGraph: {
+    title: "TruePriceAI — Payez le vrai prix. Pas le prix canadien.",
+    description:
+      "Comparez les prix Canada vs USA en tenant compte du taux de change, des taxes et des frais de douane. En temps réel.",
+    type: "website",
+    locale: "fr_CA",
+  },
+};
+
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <html lang="fr-CA" className={inter.variable}>
+      <body className={inter.className}>{children}</body>
+    </html>
+  );
+}

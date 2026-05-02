@@ -1,0 +1,113 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 120" fill="none">
+  <defs>
+    <!-- 3D background gradient -->
+    <linearGradient id="bg3d" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0D2140"/>
+      <stop offset="60%" stop-color="#0A1628"/>
+      <stop offset="100%" stop-color="#051020"/>
+    </linearGradient>
+    <!-- Cart stroke gradient for 3D effect -->
+    <linearGradient id="cartGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#4DFFF8"/>
+      <stop offset="50%" stop-color="#00D4C8"/>
+      <stop offset="100%" stop-color="#007A72"/>
+    </linearGradient>
+    <!-- Node glow gradient -->
+    <radialGradient id="nodeGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#80FFF9"/>
+      <stop offset="100%" stop-color="#00D4C8"/>
+    </radialGradient>
+    <!-- Text gradient -->
+    <linearGradient id="textGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="100%" stop-color="#C8E8F0"/>
+    </linearGradient>
+    <!-- AI badge gradient -->
+    <linearGradient id="aiBadge" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#4DFFF8"/>
+      <stop offset="100%" stop-color="#00A89E"/>
+    </linearGradient>
+    <!-- Glow filter -->
+    <filter id="glow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="2.5" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <!-- Shadow filter -->
+    <filter id="shadow" x="-10%" y="-10%" width="130%" height="150%">
+      <feDropShadow dx="0" dy="4" stdDeviation="4" flood-color="#00D4C8" flood-opacity="0.35"/>
+    </filter>
+    <!-- Text shadow -->
+    <filter id="textShadow">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#00D4C8" flood-opacity="0.2"/>
+    </filter>
+  </defs>
+
+  <!-- Background with subtle rounded rect -->
+  <rect width="320" height="120" rx="14" fill="url(#bg3d)"/>
+  <!-- Subtle top highlight -->
+  <rect width="320" height="1.5" rx="1" fill="#FFFFFF" opacity="0.06"/>
+  <!-- Ambient glow behind icon -->
+  <ellipse cx="50" cy="55" rx="38" ry="32" fill="#00D4C8" opacity="0.06"/>
+
+  <!-- === 3D ICON === -->
+  <!-- Shadow/depth layer (offset) -->
+  <path d="M21 35h8l9 30h32l7-24H45" stroke="#006860" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round" transform="translate(2,3)" opacity="0.5"/>
+  <!-- Cart body main stroke -->
+  <path d="M19 32h8l9 30h32l7-24H43" stroke="url(#cartGrad)" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round" filter="url(#glow)"/>
+  <!-- Handle shadow -->
+  <path d="M15 24h8" stroke="#006860" stroke-width="4" stroke-linecap="round" transform="translate(2,3)" opacity="0.5"/>
+  <!-- Cart handle -->
+  <path d="M13 21h9" stroke="url(#cartGrad)" stroke-width="4" stroke-linecap="round" filter="url(#glow)"/>
+  <!-- Wheel shadows -->
+  <circle cx="36" cy="70" r="4" fill="#006860" opacity="0.5"/>
+  <circle cx="57" cy="70" r="4" fill="#006860" opacity="0.5"/>
+  <!-- Wheels -->
+  <circle cx="34" cy="68" r="4" fill="url(#nodeGlow)" filter="url(#glow)"/>
+  <circle cx="55" cy="68" r="4" fill="url(#nodeGlow)" filter="url(#glow)"/>
+
+  <!-- Network lines (with glow) -->
+  <line x1="42" y1="46" x2="53" y2="40" stroke="#00D4C8" stroke-width="1.4" opacity="0.6"/>
+  <line x1="53" y1="40" x2="63" y2="50" stroke="#00D4C8" stroke-width="1.4" opacity="0.6"/>
+  <line x1="42" y1="46" x2="51" y2="55" stroke="#00D4C8" stroke-width="1.4" opacity="0.6"/>
+  <line x1="63" y1="50" x2="51" y2="55" stroke="#00D4C8" stroke-width="1.4" opacity="0.6"/>
+  <line x1="53" y1="40" x2="51" y2="55" stroke="#00D4C8" stroke-width="1.4" opacity="0.35"/>
+
+  <!-- Node shadows -->
+  <circle cx="43" cy="48" r="3.5" fill="#006860" opacity="0.4"/>
+  <circle cx="54" cy="42" r="3.5" fill="#006860" opacity="0.4"/>
+  <circle cx="64" cy="52" r="3.5" fill="#006860" opacity="0.4"/>
+  <circle cx="52" cy="57" r="3" fill="#006860" opacity="0.4"/>
+  <!-- Network nodes (3D look) -->
+  <circle cx="42" cy="46" r="3.5" fill="url(#nodeGlow)" filter="url(#glow)"/>
+  <circle cx="53" cy="40" r="3.5" fill="url(#nodeGlow)" filter="url(#glow)"/>
+  <circle cx="63" cy="50" r="3.5" fill="url(#nodeGlow)" filter="url(#glow)"/>
+  <circle cx="51" cy="55" r="2.8" fill="url(#nodeGlow)" filter="url(#glow)"/>
+  <!-- Specular highlights on nodes -->
+  <circle cx="41" cy="45" r="1.2" fill="#FFFFFF" opacity="0.6"/>
+  <circle cx="52" cy="39" r="1.2" fill="#FFFFFF" opacity="0.6"/>
+  <circle cx="62" cy="49" r="1.2" fill="#FFFFFF" opacity="0.6"/>
+
+  <!-- === 3D TEXT === -->
+  <!-- Text shadow layer -->
+  <text x="93" y="64" font-family="'Segoe UI', system-ui, sans-serif" font-weight="700" font-size="30" fill="#003836" letter-spacing="-0.5" transform="translate(2,2)">TruePrice</text>
+  <!-- Main text -->
+  <text x="91" y="62" font-family="'Segoe UI', system-ui, sans-serif" font-weight="700" font-size="30" fill="url(#textGrad)" letter-spacing="-0.5" filter="url(#textShadow)">TruePrice</text>
+
+  <!-- AI badge shadow -->
+  <rect x="260" y="41" width="38" height="22" rx="5" fill="#003836" opacity="0.5" transform="translate(2,2)"/>
+  <!-- AI badge -->
+  <rect x="258" y="39" width="38" height="22" rx="5" fill="url(#aiBadge)" filter="url(#shadow)"/>
+  <!-- Badge highlight top edge -->
+  <rect x="258" y="39" width="38" height="2" rx="2" fill="#FFFFFF" opacity="0.25"/>
+  <!-- AI text -->
+  <text x="268" y="55" font-family="'Segoe UI', system-ui, sans-serif" font-weight="800" font-size="13" fill="#0A1628" letter-spacing="1">AI</text>
+
+  <!-- Tagline -->
+  <text x="91" y="82" font-family="'Segoe UI', system-ui, sans-serif" font-weight="400" font-size="9.5" fill="#00D4C8" opacity="0.65" letter-spacing="1.8">PRIX INTELLIGENT · DÉCISIONS CLAIRES</text>
+
+  <!-- Bottom reflection line -->
+  <line x1="91" y1="88" x2="298" y2="88" stroke="#00D4C8" stroke-width="0.5" opacity="0.2"/>
+</svg>
