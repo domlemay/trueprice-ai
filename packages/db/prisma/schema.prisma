@@ -7,17 +7,24 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// ─── Enums ────────────────────────────────────────────────────────────────────
+// ─── ENUMS ────────────────────────────────────────────────────────────────────
 
 enum Plan {
   FREE
   PREMIUM
   ENTERPRISE
+  ENTERPRISE_PRO // BYOK IA, white-label, SSO
 }
 
 enum Role {
   USER
-  ADMIN
+  ADMIN // Admin TruePriceAI plateforme
+}
+
+enum OrgRole {
+  ADMIN   // Gestion complète de l'organisation
+  MANAGER // Voir historique membres, gérer préférences équipe
+  MEMBER  // Usage standard
 }
 
 enum SubscriptionStatus {
@@ -30,41 +37,262 @@ enum SubscriptionStatus {
 }
 
 enum DiscountType {
-  AUTOMATIC    // Appliqué automatiquement au panier
-  COUPON       // Code promo ou coupon à clipper
-  CONDITIONAL  // Condition requise (quantité, bundle, etc.)
-  MEMBERSHIP   // Réservé aux membres (Prime, Costco, Club, etc.)
-  SALE         // Vente / promotion temporaire
-  BUNDLE       // Achat groupé / pack
-  CASHBACK     // Remboursement différé
+  AUTOMATIC   // Appliqué automatiquement au panier
+  COUPON      // Code promo ou coupon à clipper
+  CONDITIONAL // Condition requise (quantité, bundle, etc.)
+  MEMBERSHIP  // Réservé aux membres (Prime, Costco, etc.)
+  SALE        // Vente / promotion temporaire
+  BUNDLE      // Achat groupé / pack
+  CASHBACK    // Remboursement différé
 }
 
-// ─── Phase 1: Auth / User ─────────────────────────────────────────────────────
+enum NotificationChannel {
+  IN_APP
+  EMAIL
+  SMS
+  PUSH_MOBILE
+  PUSH_DESKTOP
+}
+
+enum IntegrationType {
+  POS_LIGHTSPEED
+  POS_SQUARE
+  POS_SHOPIFY
+  POS_CLOVER
+  POS_LS_RETAIL
+  POS_MAITRED
+  POS_VELOCE
+  POS_ACOMBA
+  POS_ALICE
+  ERP_SAP
+  ERP_NETSUITE
+  ERP_DYNAMICS365
+  ERP_QUICKBOOKS
+  ERP_SAGE
+  ERP_ODOO
+  ERP_FRESHBOOKS
+  ERP_WAVE
+  ERP_XERO
+  BI_GOOGLE_SHEETS
+  BI_POWER_BI
+  BI_TABLEAU
+  BI_LOOKER
+  WEBHOOK_INBOUND
+  WEBHOOK_OUTBOUND
+  CUSTOM // Connecteur générique
+}
+
+enum DeviceType {
+  WEB
+  MOBILE
+  DESKTOP
+}
+
+enum SiteStatus {
+  OPERATIONAL
+  DEGRADED
+  DOWN
+}
+
+enum InputType {
+  KEYWORD
+  URL
+  UPC
+  ASIN
+  MODEL
+  SKU
+}
+
+enum ListType {
+  STANDARD    // Liste simple
+  RECURRING   // Liste récurrente (épicerie, commissions)
+  PROJECT     // Montage PC, rénovation, etc.
+}
+
+enum SupplierIntegrationLevel {
+  API         // API directe / EDI
+  SCRAPING    // Portail web privé (credentials)
+  FILE        // Import Excel / CSV / PDF
+  MANUAL      // Saisie manuelle
+}
+
+enum FileImportType {
+  INVOICE     // Facture fournisseur
+  CATALOG     // Catalogue produits
+  PURCHASE_ORDER // Bon de commande
+  PRICE_LIST  // Liste de prix
+  PRODUCT_LIST // Liste de produits batch
+}
+
+enum ConsentType {
+  FUNCTIONAL
+  ANALYTICS
+  MARKETING
+}
+
+enum ChangelogAudience {
+  ALL
+  PREMIUM_PLUS
+  ENTERPRISE_ONLY
+}
+
+// ─── UTILISATEUR & AUTH ───────────────────────────────────────────────────────
 
 model User {
   id               String    @id @default(cuid())
   clerkId          String    @unique
   email            String    @unique
   name             String?
+  avatarUrl        String?
+  phone            String?
 
+  // Plan individuel
   plan             Plan      @default(FREE)
   planExpiresAt    DateTime?
+  isTrialing       Boolean   @default(false)
+  trialEndsAt      DateTime?
+  trialPlan        Plan?
   stripeCustomerId String?   @unique
+
+  // Rôle plateforme
   role             Role      @default(USER)
 
-  searchCountMonth Int       @default(0)
-  searchResetAt    DateTime  @default(now())
+  // Préférences
+  preferredCurrency String   @default("CAD")
+  preferredLocale   String   @default("fr-CA")
+  theme             String   @default("dark") // "dark" | "light"
+  timezone          String   @default("America/Toronto")
+  adsEnabled        Boolean  @default(true)  // false dès plan payant
+
+  // Compteurs usage IA
+  aiTokensUsed      Int      @default(0)
+  aiTokensLimit     Int      @default(0)
+  aiTokensResetAt   DateTime @default(now())
+
+  // Compteurs recherche
+  searchCountMonth  Int      @default(0)
+  searchResetAt     DateTime @default(now())
+
+  // Onboarding
+  onboardingStep        Int?
+  onboardingCompletedAt DateTime?
+
+  // RGPD / Loi 25
+  gdprDeleteRequestedAt DateTime?
+  gdprDataExportedAt    DateTime?
 
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 
-  searches         PriceSearch[]
-  subscription     Subscription?
-  usageLogs        UsageLog[]
-  apiKeys          ApiKey[]
+  // Relations
+  addresses            UserAddress[]
+  sessions             UserSession[]
+  devices              UserDevice[]
+  subscription         Subscription?
+  memberships          OrganizationMembership[]
+  searches             PriceSearch[]
+  productLists         ProductList[]
+  favorites            Favorite[]
+  priceAlerts          PriceAlert[]
+  stockAlerts          StockAlert[]
+  usageLogs            UsageLog[]
+  apiKeys              ApiKey[]
+  aiTokenPurchases     AiTokenPurchase[]
+  notificationPrefs    NotificationPreference[]
+  sharedResults        SharedResult[]           @relation("SharedBy")
+  receivedResults      SharedResult[]           @relation("SharedTo")
+  consentLogs          ConsentLog[]
+  supportTickets       SupportTicket[]
+  aiConversations      AiConversation[]
+  changelogs           ChangelogRead[]
 
   @@map("users")
 }
+
+model UserAddress {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  label       String   // "Domicile", "Bureau", "Entrepôt"
+  isDefault   Boolean  @default(false)
+
+  street      String
+  city        String
+  province    String   // Code province/état (ex: "QC", "ON", "CA", "NY")
+  postalCode  String
+  country     String   @default("CA")
+
+  createdAt   DateTime @default(now())
+
+  @@map("user_addresses")
+}
+
+model UserSession {
+  id           String     @id @default(cuid())
+  userId       String
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  deviceType   DeviceType
+  deviceId     String?    // Identifiant appareil (fingerprint)
+  deviceName   String?    // "MacBook Pro", "iPhone 15"
+  ipAddress    String
+  userAgent    String?
+  isTrusted    Boolean    @default(false) // Appareil de confiance enregistré
+
+  lastActiveAt DateTime   @default(now())
+  expiresAt    DateTime
+  createdAt    DateTime   @default(now())
+
+  @@map("user_sessions")
+}
+
+model UserDevice {
+  id          String     @id @default(cuid())
+  userId      String
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  deviceType  DeviceType
+  deviceId    String
+  deviceName  String?
+  isTrusted   Boolean    @default(false)
+  registeredAt DateTime  @default(now())
+  lastUsedAt  DateTime?
+
+  @@unique([userId, deviceId])
+  @@map("user_devices")
+}
+
+model NotificationPreference {
+  id      String              @id @default(cuid())
+  userId  String
+  user    User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  type    String              // "price_alert", "stock_alert", "report_weekly", "report_monthly", "changelog"
+  channel NotificationChannel
+  enabled Boolean             @default(true)
+
+  @@unique([userId, type, channel])
+  @@map("notification_preferences")
+}
+
+model ConsentLog {
+  id        String      @id @default(cuid())
+  userId    String
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  type      ConsentType
+  granted   Boolean
+  ipAddress String?
+  userAgent String?
+  version   String      // Version de la politique de confidentialité
+
+  createdAt DateTime    @default(now())
+
+  @@map("consent_logs")
+}
+
+// ─── ABONNEMENTS & FACTURATION ────────────────────────────────────────────────
 
 model Subscription {
   id                   String             @id @default(cuid())
@@ -88,140 +316,976 @@ model Subscription {
   @@map("subscriptions")
 }
 
-// ─── Phase 2: Recherche & Comparaison de prix ─────────────────────────────────
-
-// Une recherche = une requête utilisateur (mot-clé, URL, UPC…)
-model PriceSearch {
-  id              String    @id @default(cuid())
+model AiTokenPurchase {
+  id              String   @id @default(cuid())
   userId          String
-  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  // Input de la recherche
-  query           String               // texte brut entré par l'user
-  inputType       String?              // "keyword" | "url" | "upc" | "asin" | "model"
-  productUrl      String?              // URL source si fournie
+  stripePaymentId String   @unique
+  tokensAmount    Int
+  pricePaid       Decimal
+  currency        String   @default("CAD")
 
-  // Contexte géographique de l'user au moment de la recherche
-  userCountry     String?              // "CA", "US", "FR"…
-  userCurrency    String?              // "CAD", "USD", "EUR"…
-  userRegion      String?              // province / état (pour les taxes locales)
+  createdAt       DateTime @default(now())
+
+  @@map("ai_token_purchases")
+}
+
+// ─── ORGANISATION (ENTREPRISE) ────────────────────────────────────────────────
+
+model Organization {
+  id               String   @id @default(cuid())
+  name             String
+  slug             String   @unique
+  logoUrl          String?
+  website          String?
+
+  // Plan organisation
+  plan             Plan     @default(ENTERPRISE)
+  planExpiresAt    DateTime?
+  isTrialing       Boolean  @default(false)
+  trialEndsAt      DateTime?
+  stripeCustomerId String?  @unique
+  maxSeats         Int      @default(10)
+
+  // Paramètres sécurité
+  enforce2FA          Boolean @default(false)
+  ssoProvider         String? // "okta", "azure_ad", "google_workspace"
+  ssoConfig           Json?
+  ipWhitelist         String[] // Réservé pour usage futur
+
+  // Paramètres par défaut
+  defaultCurrency     String  @default("CAD")
+  defaultLocale       String  @default("fr-CA")
+  defaultTimezone     String  @default("America/Toronto")
+  referenceCurrency   String  @default("CAD") // Devise des rapports consolidés
+  historyRetentionDays Int    @default(730) // 2 ans
+
+  // White-label (Phase 2-3)
+  whitelabelConfig    Json?
+  customDomain        String?
+  brandingConfig      Json?
+
+  // Partage de résultats entre membres
+  allowResultSharing  Boolean @default(true)
+  allowExternalSharing Boolean @default(false)
+
+  // Paramètres IA
+  aiTokensLimit       Int     @default(0)
+  aiTokensUsed        Int     @default(0)
+  aiTokensResetAt     DateTime @default(now())
+  byokApiKey          String? // BYOK chiffré — ENTERPRISE_PRO seulement
+
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  // Relations
+  memberships         OrganizationMembership[]
+  branches            Branch[]
+  invitations         OrganizationInvitation[]
+  subscription        OrgSubscription?
+  suppliers           OrganizationSupplier[]
+  blockedSites        OrgBlockedSite[]
+  preferredSites      OrgPreferredSite[]
+  customDutyRates     CustomDutyRate[]
+  integrations        Integration[]
+  searches            PriceSearch[]
+  productLists        ProductList[]
+  reports             Report[]
+  auditLogs           AuditLog[]
+  aiTokenPurchases    OrgAiTokenPurchase[]
+  webhooks            Webhook[]
+  apiKeys             ApiKey[]
+  supportTickets      SupportTicket[]
+
+  @@map("organizations")
+}
+
+model Branch {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  name           String
+  country        String       @default("CA")
+  province       String?
+  city           String?
+  timezone       String       @default("America/Toronto")
+  currency       String       @default("CAD")
+  isHeadquarters Boolean      @default(false)
+
+  // Config taxes spécifique à cette succursale
+  defaultProvince String?     // Pour le calcul des taxes locales
+
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  members        OrganizationMembership[]
+
+  @@map("branches")
+}
+
+model OrganizationMembership {
+  id             String       @id @default(cuid())
+  userId         String
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  branchId       String?
+  branch         Branch?      @relation(fields: [branchId], references: [id])
+
+  role           OrgRole      @default(MEMBER)
+  canViewTeamHistory Boolean  @default(false) // Voir historique des autres membres
+
+  joinedAt       DateTime     @default(now())
+  removedAt      DateTime?    // Soft delete
+  removedBy      String?      // userId de l'admin qui a retiré
+
+  @@unique([userId, organizationId])
+  @@map("organization_memberships")
+}
+
+model OrganizationInvitation {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  email          String
+  role           OrgRole      @default(MEMBER)
+  branchId       String?
+  token          String       @unique
+  expiresAt      DateTime
+  acceptedAt     DateTime?
+  invitedBy      String       // userId de l'admin
+
+  createdAt      DateTime     @default(now())
+
+  @@map("organization_invitations")
+}
+
+model OrgSubscription {
+  id                   String             @id @default(cuid())
+  organizationId       String             @unique
+  organization         Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  stripeSubscriptionId String             @unique
+  stripePriceId        String
+  stripeCustomerId     String
+
+  plan                 Plan
+  status               SubscriptionStatus
+  seatsIncluded        Int
+  seatsPriceExtra      Decimal            // Prix par siège supplémentaire
+  currentPeriodStart   DateTime
+  currentPeriodEnd     DateTime
+  cancelAtPeriodEnd    Boolean            @default(false)
+  canceledAt           DateTime?
+
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+
+  @@map("org_subscriptions")
+}
+
+model OrgAiTokenPurchase {
+  id              String       @id @default(cuid())
+  organizationId  String
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  stripePaymentId String       @unique
+  tokensAmount    Int
+  pricePaid       Decimal
+  currency        String       @default("CAD")
+  purchasedBy     String       // userId
+
+  createdAt       DateTime     @default(now())
+
+  @@map("org_ai_token_purchases")
+}
+
+// ─── FOURNISSEURS ORGANISATION ────────────────────────────────────────────────
+
+model OrganizationSupplier {
+  id             String                   @id @default(cuid())
+  organizationId String
+  organization   Organization             @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  name           String
+  website        String?
+  country        String?
+  currency       String                   @default("CAD")
+  contactEmail   String?
+  contactPhone   String?
+  notes          String?
+
+  // Conditions commerciales
+  globalDiscountPct  Decimal?             // Escompte global en %
+  paymentTermsDays   Int?                 // Paiement à X jours
+  hasCreditAccount   Boolean              @default(false)
+  minimumOrderAmount Decimal?             // Commande minimale
+
+  // Transport
+  freeShippingThreshold Decimal?          // Transport gratuit si commande > X$
+  shippingRateFlat      Decimal?          // Tarif fixe
+  shippingRateTable     Json?             // Barème [{maxAmount, rate}]
+
+  // Douanes préférentielles
+  customDutyRates    CustomDutyRate[]
+
+  // Intégration technique
+  integrationLevel   SupplierIntegrationLevel @default(MANUAL)
+  integrationConfig  Json?                // URL portail, credentials chiffrés, config EDI
+
+  isActive           Boolean              @default(true)
+  lastSyncAt         DateTime?
+  priceListDate      DateTime?            // Date du dernier fichier importé
+
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+
+  // Relations
+  categoryDiscounts  SupplierCategoryDiscount[]
+  volumeDiscounts    SupplierVolumeDiscount[]
+  fileImports        SupplierFileImport[]
+  offers             ProductOffer[]
+
+  @@map("organization_suppliers")
+}
+
+model SupplierCategoryDiscount {
+  id          String               @id @default(cuid())
+  supplierId  String
+  supplier    OrganizationSupplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+
+  category    String               // Catégorie de produit
+  discountPct Decimal              // Escompte en %
+
+  @@map("supplier_category_discounts")
+}
+
+model SupplierVolumeDiscount {
+  id          String               @id @default(cuid())
+  supplierId  String
+  supplier    OrganizationSupplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+
+  minQty      Int
+  minAmount   Decimal?
+  discountPct Decimal
+
+  @@map("supplier_volume_discounts")
+}
+
+model SupplierFileImport {
+  id          String               @id @default(cuid())
+  supplierId  String
+  supplier    OrganizationSupplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+
+  type        FileImportType
+  fileName    String
+  fileUrl     String               // Stockage sécurisé (S3/R2)
+  documentDate DateTime?           // Date du document (pas upload)
+  rowCount    Int?                 // Nombre de produits parsés
+  status      String               @default("pending") // pending|processing|done|error
+  errorLog    String?
+  parsedBy    String               // "ai" | "manual"
+
+  uploadedBy  String               // userId
+  uploadedAt  DateTime             @default(now())
+  processedAt DateTime?
+
+  @@map("supplier_file_imports")
+}
+
+// ─── SITES & MARKETPLACES ─────────────────────────────────────────────────────
+
+model Marketplace {
+  id              String     @id @default(cuid())
+  name            String     // "Amazon Canada"
+  slug            String     @unique // "amazon.ca"
+  url             String
+  country         String     // "CA"
+  currency        String     // "CAD"
+  logoUrl         String?
+
+  status          SiteStatus @default(OPERATIONAL)
+  statusMessage   String?
+  lastCheckedAt   DateTime?
+
+  // Config scraping
+  scrapingConfig  Json?      // Sélecteurs CSS, headers, région, etc.
+  requiresProxy   Boolean    @default(false)
+  supportsDeliveryCheck Boolean @default(false)
+  supportsInstacart Boolean  @default(false)
+
+  isActive        Boolean    @default(true)
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+
+  statusHistory   MarketplaceStatusLog[]
+  offers          ProductOffer[]
+  orgPreferred    OrgPreferredSite[]
+  orgBlocked      OrgBlockedSite[]
+  userBlocked     UserBlockedSite[]
+  userPreferred   UserPreferredSite[]
+
+  @@map("marketplaces")
+}
+
+model MarketplaceStatusLog {
+  id            String     @id @default(cuid())
+  marketplaceId String
+  marketplace   Marketplace @relation(fields: [marketplaceId], references: [id], onDelete: Cascade)
+
+  status        SiteStatus
+  message       String?
+  resolvedAt    DateTime?
+  createdAt     DateTime   @default(now())
+
+  @@map("marketplace_status_logs")
+}
+
+model OrgPreferredSite {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  marketplaceId  String
+  marketplace    Marketplace  @relation(fields: [marketplaceId], references: [id])
+  isPrimary      Boolean      @default(false)
+
+  @@unique([organizationId, marketplaceId])
+  @@map("org_preferred_sites")
+}
+
+model OrgBlockedSite {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  marketplaceId  String
+  marketplace    Marketplace  @relation(fields: [marketplaceId], references: [id])
+  blockedBy      String       // userId
+  reason         String?
+
+  @@unique([organizationId, marketplaceId])
+  @@map("org_blocked_sites")
+}
+
+model UserPreferredSite {
+  id            String      @id @default(cuid())
+  userId        String
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  marketplaceId String
+  marketplace   Marketplace @relation(fields: [marketplaceId], references: [id])
+  isPrimary     Boolean     @default(false)
+
+  @@unique([userId, marketplaceId])
+  @@map("user_preferred_sites")
+}
+
+model UserBlockedSite {
+  id            String      @id @default(cuid())
+  userId        String
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  marketplaceId String
+  marketplace   Marketplace @relation(fields: [marketplaceId], references: [id])
+
+  @@unique([userId, marketplaceId])
+  @@map("user_blocked_sites")
+}
+
+// ─── PRODUITS ─────────────────────────────────────────────────────────────────
+
+model Product {
+  id           String    @id @default(cuid())
+  name         String
+  brand        String?
+  description  String?
+  imageUrl     String?
+  images       String[]  // URLs supplémentaires
+  category     String?   // Assignée par IA, modifiable
+  subcategory  String?
+
+  // Identifiants
+  upc          String?   @unique
+  ean          String?   @unique
+  isbn         String?
+
+  // Spécifications (flexible)
+  specs        Json?
+
+  aiCategoryConfidence Float? // Confiance de l'IA dans la catégorie (0-1)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  variants     ProductVariant[]
+  favorites    Favorite[]
+  priceAlerts  PriceAlert[]
+  stockAlerts  StockAlert[]
+  priceHistory PriceHistory[]
+  searches     PriceSearch[]
+
+  @@map("products")
+}
+
+model ProductVariant {
+  id          String    @id @default(cuid())
+  productId   String
+  product     Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  name        String    // "Bleu · XL", "256GB · Noir"
+  asin        String?   @unique
+  sku         String?
+  upc         String?
+  imageUrl    String?
+
+  // Attributs de variation
+  attributes  Json?     // { "couleur": "Bleu", "taille": "XL" }
+
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+
+  offers      ProductOffer[]
+  priceHistory PriceHistory[]
+
+  @@map("product_variants")
+}
+
+// ─── RECHERCHE & COMPARAISON ──────────────────────────────────────────────────
+
+model PriceSearch {
+  id             String       @id @default(cuid())
+  userId         String?
+  user           User?        @relation(fields: [userId], references: [id])
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id])
+
+  // Input
+  query          String
+  inputType      InputType    @default(KEYWORD)
+  productUrl     String?
+  quantity       Int          @default(1)  // Qté requise par le user
+
+  // Contexte géo
+  userCountry    String?
+  userCurrency   String?
+  userRegion     String?      // Province/état pour taxes
 
   // Produit identifié
-  productName     String?
-  productBrand    String?
-  productCategory String?
-  productImageUrl String?
-  asin            String?              // Amazon ASIN si trouvé
-  upc             String?
+  productId      String?
+  product        Product?     @relation(fields: [productId], references: [id])
 
-  // Meilleure offre calculée (snapshot au moment de la recherche)
-  bestOfferMarket String?              // "amazon.ca", "bestbuy.us"…
-  bestTruePrice   Decimal?            // vrai coût total le plus bas (devise user)
+  // Meilleure offre snapshot
+  bestOfferMarket  String?
+  bestTruePrice    Decimal?
 
-  offers          ProductOffer[]
-  createdAt       DateTime @default(now())
+  // Déduplication
+  deduplicatedFromId String?  // Si réutilise un résultat existant
+
+  // Tags & organisation
+  tags           String[]
+  notes          String?
+
+  // IA
+  aiSummary      String?      // Résumé généré par l'IA
+  aiTokensUsed   Int          @default(0)
+
+  offers         ProductOffer[]
+  aiConversations AiConversation[]
+
+  expiresAt      DateTime?    // Pour le nettoyage selon plan
+  createdAt      DateTime     @default(now())
 
   @@map("price_searches")
 }
 
-// Une offre = un résultat par marketplace pour une recherche donnée
 model ProductOffer {
-  id              String      @id @default(cuid())
+  id              String               @id @default(cuid())
   searchId        String
-  search          PriceSearch @relation(fields: [searchId], references: [id], onDelete: Cascade)
+  search          PriceSearch          @relation(fields: [searchId], references: [id], onDelete: Cascade)
+  variantId       String?
+  variant         ProductVariant?      @relation(fields: [variantId], references: [id])
+  marketplaceId   String?
+  marketplace     Marketplace?         @relation(fields: [marketplaceId], references: [id])
+  supplierId      String?
+  supplier        OrganizationSupplier? @relation(fields: [supplierId], references: [id])
 
-  // Identité du vendeur / marketplace
-  marketplace     String      // "amazon.ca", "amazon.com", "bestbuy.ca", "walmart.com"…
-  sellerName      String?     // "Amazon", "Best Buy", "Apple Store"
-  sellerCountry   String      // "CA", "US", "FR"…
-  currency        String      // devise native de cette offre ("CAD", "USD"…)
-  productUrl      String?     // URL directe vers la fiche produit
+  // Identité
+  sellerName      String?
+  sellerCountry   String
+  currency        String
+  productUrl      String?
 
-  // Prix bruts (devise native du marketplace)
-  priceOriginal   Decimal     // prix barré / avant rabais
-  priceCurrent    Decimal     // prix actuel après rabais automatiques
-  priceLowest30d  Decimal?    // plus bas prix des 30 derniers jours (si disponible)
+  // Prix bruts (devise native)
+  priceOriginal   Decimal
+  priceCurrent    Decimal
+  priceLowest30d  Decimal?
+  priceAfterBestDiscount Decimal?     // Prix après meilleur rabais applicable
 
-  // Vrai coût calculé (converti en devise de l'utilisateur)
-  exchangeRate    Decimal?    // taux appliqué au moment du calcul
-  shippingCost    Decimal?    // frais de livraison (devise user)
-  dutyRate        Decimal?    // taux de droits de douane appliqué (%)
-  dutyAmount      Decimal?    // montant des droits calculé (devise user)
-  taxRate         Decimal?    // taux de taxe locale (%)
-  taxAmount       Decimal?    // montant de la taxe calculé (devise user)
-  brokerageFee    Decimal?    // frais de courtage douanier estimés
-  truePriceTotal  Decimal?    // total final = priceCurrent converti + shipping + duty + tax + brokerage
+  // Vrai coût calculé (devise user)
+  exchangeRate    Decimal?
+  shippingCost    Decimal?
+  dutyRate        Decimal?
+  dutyAmount      Decimal?
+  taxRate         Decimal?
+  taxAmount       Decimal?
+  brokerageFee    Decimal?
+  truePriceTotal  Decimal?
 
-  // Disponibilité & livraison
-  inStock         Boolean     @default(true)
+  // Stock & livraison
+  inStock         Boolean              @default(true)
   stockQty        Int?
-  deliveryDays    Int?        // délai de livraison estimé (jours)
-  isPrime         Boolean     @default(false)  // Amazon Prime éligible
+  stockSufficient Boolean?             // Stock >= qté requise par le user
+  deliveryDays    Int?
+  isPrime         Boolean              @default(false)
+  deliveryMode    String?              // "standard" | "pickup" | "instacart" | "doordash"
+  pickupAddress   String?
 
-  // Rabais appliqués à cette offre
   discounts       Discount[]
-
-  scrapedAt       DateTime    @default(now())
+  scrapedAt       DateTime             @default(now())
 
   @@map("product_offers")
 }
 
-// Rabais / promotions attachés à une offre
 model Discount {
-  id              String       @id @default(cuid())
-  offerId         String
-  offer           ProductOffer @relation(fields: [offerId], references: [id], onDelete: Cascade)
+  id            String       @id @default(cuid())
+  offerId       String
+  offer         ProductOffer @relation(fields: [offerId], references: [id], onDelete: Cascade)
 
-  type            DiscountType
+  type          DiscountType
+  label         String
+  amountOff     Decimal?
+  percentOff    Decimal?
+  condition     String?
+  minQty        Int?
+  code          String?
+  expiresAt     DateTime?
+  startsAt      DateTime?
+  isStackable   Boolean      @default(false)
+  isAutoApplied Boolean      @default(true)
 
-  // Description lisible (ex: "Coupon 15 %", "Membres Prime", "Achetez-en 2, économisez 10 %")
-  label           String
-
-  // Valeur du rabais
-  amountOff       Decimal?    // montant fixe (devise native de l'offre)
-  percentOff      Decimal?    // pourcentage de réduction
-
-  // Conditions d'application
-  condition       String?     // texte décrivant la condition (ex: "Abonnement Amazon Prime requis")
-  minQty          Int?        // quantité minimale requise
-  code            String?     // code promo à saisir (si applicable)
-
-  // Validité
-  expiresAt       DateTime?   // date de fin (null = indéterminée)
-  startsAt        DateTime?   // date de début (si promotion future)
-
-  // Comportement
-  isStackable     Boolean     @default(false) // cumulable avec d'autres rabais
-  isAutoApplied   Boolean     @default(true)  // s'applique automatiquement ou action requise
-
-  createdAt       DateTime    @default(now())
+  createdAt     DateTime     @default(now())
 
   @@map("discounts")
 }
 
-// ─── Phase 3: Usage & API ─────────────────────────────────────────────────────
+model PriceHistory {
+  id          String          @id @default(cuid())
+  productId   String?
+  product     Product?        @relation(fields: [productId], references: [id])
+  variantId   String?
+  variant     ProductVariant? @relation(fields: [variantId], references: [id])
+  marketplaceId String?
 
-model UsageLog {
+  price       Decimal
+  currency    String
+  recordedAt  DateTime        @default(now())
+
+  @@map("price_history")
+}
+
+// ─── LISTES DE PRODUITS ───────────────────────────────────────────────────────
+
+model ProductList {
+  id             String        @id @default(cuid())
+  userId         String?
+  user           User?         @relation(fields: [userId], references: [id])
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id])
+
+  name           String
+  type           ListType      @default(STANDARD)
+  description    String?
+
+  // Listes récurrentes
+  recurrenceDays Int?          // 7 = hebdomadaire, 30 = mensuel
+  lastRunAt      DateTime?
+  nextRunAt      DateTime?
+  autoNotify     Boolean       @default(true)
+
+  tags           String[]
+  isShared       Boolean       @default(false) // Partagée avec l'équipe
+
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  items          ProductListItem[]
+
+  @@map("product_lists")
+}
+
+model ProductListItem {
+  id          String      @id @default(cuid())
+  listId      String
+  list        ProductList @relation(fields: [listId], references: [id], onDelete: Cascade)
+
+  productId   String?
+  variantId   String?
+  query       String?     // Si pas encore lié à un produit
+  quantity    Int         @default(1)
+  notes       String?
+  sortOrder   Int         @default(0)
+
+  createdAt   DateTime    @default(now())
+
+  @@map("product_list_items")
+}
+
+// ─── FAVORIS ──────────────────────────────────────────────────────────────────
+
+model Favorite {
   id        String   @id @default(cuid())
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  action    String   // "search", "export_csv", "export_pdf", "api_call"
-  metadata  Json?
+  productId String?
+  product   Product? @relation(fields: [productId], references: [id])
+  notes     String?
+  tags      String[]
   createdAt DateTime @default(now())
+
+  @@unique([userId, productId])
+  @@map("favorites")
+}
+
+// ─── ALERTES PRIX & STOCK ─────────────────────────────────────────────────────
+
+model PriceAlert {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  productId   String?
+  product     Product?  @relation(fields: [productId], references: [id])
+
+  targetPrice Decimal
+  currency    String    @default("CAD")
+  marketplaceIds String[] // Marketplaces à surveiller (vide = tous)
+
+  isActive    Boolean   @default(true)
+  triggeredAt DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@map("price_alerts")
+}
+
+model StockAlert {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  productId   String?
+  product     Product?  @relation(fields: [productId], references: [id])
+
+  marketplaceIds String[]
+  isActive    Boolean   @default(true)
+  triggeredAt DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@map("stock_alerts")
+}
+
+// ─── PARTAGE DE RÉSULTATS ─────────────────────────────────────────────────────
+
+model SharedResult {
+  id          String   @id @default(cuid())
+  sharedById  String
+  sharedBy    User     @relation("SharedBy", fields: [sharedById], references: [id])
+  sharedToId  String?
+  sharedTo    User?    @relation("SharedTo", fields: [sharedToId], references: [id])
+
+  searchId    String?
+  shareToken  String?  @unique  // Pour partage par lien externe
+  expiresAt   DateTime?
+  isExternal  Boolean  @default(false)
+  message     String?
+
+  viewedAt    DateTime?
+  createdAt   DateTime @default(now())
+
+  @@map("shared_results")
+}
+
+// ─── SIGNALEMENT PRIX ─────────────────────────────────────────────────────────
+
+model PriceReport {
+  id            String   @id @default(cuid())
+  userId        String
+  offerId       String?
+  marketplaceId String?
+  reportedPrice Decimal?
+  actualPrice   Decimal?
+  notes         String?
+  status        String   @default("pending") // pending|investigating|resolved|dismissed
+  resolvedAt    DateTime?
+  createdAt     DateTime @default(now())
+
+  @@map("price_reports")
+}
+
+// ─── IA & CONVERSATIONS ───────────────────────────────────────────────────────
+
+model AiConversation {
+  id        String      @id @default(cuid())
+  userId    String
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  searchId  String?
+  search    PriceSearch? @relation(fields: [searchId], references: [id])
+
+  title     String?
+  tokensUsed Int        @default(0)
+
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  messages  AiMessage[]
+
+  @@map("ai_conversations")
+}
+
+model AiMessage {
+  id             String         @id @default(cuid())
+  conversationId String
+  conversation   AiConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  role           String         // "user" | "assistant"
+  content        String
+  tokensUsed     Int            @default(0)
+  model          String?        // Modèle IA utilisé
+
+  createdAt      DateTime       @default(now())
+
+  @@map("ai_messages")
+}
+
+// ─── TAXES & DOUANES ──────────────────────────────────────────────────────────
+
+model TaxRate {
+  id          String   @id @default(cuid())
+  country     String
+  province    String?  // Null = taux national
+  taxType     String   // "GST", "TVQ", "HST", "TVA", "SALES_TAX"
+  rate        Decimal
+  validFrom   DateTime
+  validTo     DateTime?
+  source      String?  // URL ou référence gouvernementale
+  verifiedAt  DateTime?
+  createdAt   DateTime @default(now())
+
+  @@map("tax_rates")
+}
+
+model DutyRate {
+  id              String   @id @default(cuid())
+  fromCountry     String
+  toCountry       String
+  productCategory String
+  hsCode          String?  // Code tarifaire harmonisé
+  rate            Decimal
+  exemptionLimit  Decimal? // Franchise douanière (ex: 20$ CAD)
+  agreement       String?  // "CUSMA", "UE", "standard"
+  validFrom       DateTime
+  validTo         DateTime?
+  notes           String?
+  verifiedAt      DateTime?
+  createdAt       DateTime @default(now())
+
+  @@map("duty_rates")
+}
+
+model CustomDutyRate {
+  id             String        @id @default(cuid())
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id])
+  supplierId     String?
+  supplier       OrganizationSupplier? @relation(fields: [supplierId], references: [id])
+
+  fromCountry    String
+  toCountry      String
+  productCategory String?
+  rate           Decimal
+  validFrom      DateTime
+  validTo        DateTime?
+  notes          String?
+
+  @@map("custom_duty_rates")
+}
+
+model ExchangeRate {
+  id           String   @id @default(cuid())
+  fromCurrency String
+  toCurrency   String
+  rate         Decimal
+  source       String   // "openexchangerates", "fixer", "frankfurter"
+  cachedAt     DateTime @default(now())
+  validUntil   DateTime
+
+  @@unique([fromCurrency, toCurrency, source])
+  @@map("exchange_rates")
+}
+
+// ─── INTÉGRATIONS EXTERNES ────────────────────────────────────────────────────
+
+model Integration {
+  id             String          @id @default(cuid())
+  organizationId String
+  organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  type           IntegrationType
+  name           String          // Nom affiché
+  config         Json?           // Config chiffrée (credentials, endpoints)
+  apiVersion     String?
+  isSandbox      Boolean         @default(false)
+
+  isActive       Boolean         @default(true)
+  lastSyncAt     DateTime?
+  lastSyncStatus String?         // "success" | "error"
+  lastSyncError  String?
+
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  webhooks       Webhook[]
+
+  @@map("integrations")
+}
+
+model Webhook {
+  id             String        @id @default(cuid())
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id])
+  integrationId  String?
+  integration    Integration?  @relation(fields: [integrationId], references: [id])
+
+  direction      String        // "inbound" | "outbound"
+  url            String?       // Pour outbound
+  secret         String?       // HMAC secret chiffré
+  events         String[]      // ["search.completed", "batch.done"]
+  apiVersion     String        @default("v1")
+
+  isActive       Boolean       @default(true)
+  lastTriggeredAt DateTime?
+  createdAt      DateTime      @default(now())
+
+  @@map("webhooks")
+}
+
+// ─── CLÉS API ────────────────────────────────────────────────────────────────
+
+model ApiKey {
+  id             String        @id @default(cuid())
+  userId         String?
+  user           User?         @relation(fields: [userId], references: [id])
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id])
+
+  name           String
+  keyHash        String        @unique
+  prefix         String        // "tp_live_abc1" ou "tp_test_abc1"
+  isSandbox      Boolean       @default(false)
+  apiVersion     String        @default("v1")
+
+  isActive       Boolean       @default(true)
+  lastUsedAt     DateTime?
+  expiresAt      DateTime?
+  createdAt      DateTime      @default(now())
+
+  @@map("api_keys")
+}
+
+// ─── RAPPORTS ─────────────────────────────────────────────────────────────────
+
+model Report {
+  id             String        @id @default(cuid())
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id])
+  userId         String?
+
+  type           String        // "weekly", "monthly", "custom", "savings"
+  period         String?       // "2026-05", "2026-W18"
+  data           Json
+  currency       String        @default("CAD")
+
+  emailSentAt    DateTime?
+  createdAt      DateTime      @default(now())
+
+  @@map("reports")
+}
+
+// ─── USAGE & AUDIT ────────────────────────────────────────────────────────────
+
+model UsageLog {
+  id             String        @id @default(cuid())
+  userId         String?
+  user           User?         @relation(fields: [userId], references: [id])
+  organizationId String?
+
+  action         String        // "search", "export_csv", "api_call", "file_import", "ai_query"
+  metadata       Json?
+  isSandbox      Boolean       @default(false)
+
+  createdAt      DateTime      @default(now())
 
   @@map("usage_logs")
 }
 
-model ApiKey {
-  id         String    @id @default(cuid())
-  userId     String
-  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  name       String
-  keyHash    String    @unique // SHA-256, jamais la clé en clair
-  prefix     String            // ex: "tp_live_abc1" — affiché dans le dashboard
-  lastUsedAt DateTime?
-  isActive   Boolean   @default(true)
-  createdAt  DateTime  @default(now())
+model AuditLog {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
-  @@map("api_keys")
+  userId         String?      // Null si action système
+  action         String       // "member.added", "settings.changed", "export.done"
+  targetType     String?      // "User", "Integration", "Supplier"
+  targetId       String?
+  metadata       Json?
+  ipAddress      String?
+
+  createdAt      DateTime     @default(now())
+
+  @@map("audit_logs")
+}
+
+// ─── SUPPORT ──────────────────────────────────────────────────────────────────
+
+model SupportTicket {
+  id             String        @id @default(cuid())
+  userId         String?
+  user           User?         @relation(fields: [userId], references: [id])
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id])
+
+  subject        String
+  description    String
+  status         String        @default("open") // open|in_progress|resolved|closed
+  priority       String        @default("normal") // low|normal|high|urgent
+
+  resolvedAt     DateTime?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  @@map("support_tickets")
+}
+
+// ─── CHANGELOG & NOUVEAUTÉS ──────────────────────────────────────────────────
+
+model Changelog {
+  id          String            @id @default(cuid())
+  title       String
+  body        String
+  version     String?
+  audience    ChangelogAudience @default(ALL)
+  publishedAt DateTime
+  createdAt   DateTime          @default(now())
+
+  reads       ChangelogRead[]
+
+  @@map("changelogs")
+}
+
+model ChangelogRead {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  changelogId String
+  changelog   Changelog @relation(fields: [changelogId], references: [id], onDelete: Cascade)
+  readAt      DateTime  @default(now())
+
+  @@unique([userId, changelogId])
+  @@map("changelog_reads")
 }
