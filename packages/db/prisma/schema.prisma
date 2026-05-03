@@ -1,6 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -10,37 +7,221 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// ─── Phase 1: Auth/User ───────────────────────────────────────────────────────
+// ─── Enums ────────────────────────────────────────────────────────────────────
+
+enum Plan {
+  FREE
+  PREMIUM
+  ENTERPRISE
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum SubscriptionStatus {
+  TRIALING
+  ACTIVE
+  PAST_DUE
+  CANCELED
+  UNPAID
+  INCOMPLETE
+}
+
+enum DiscountType {
+  AUTOMATIC    // Appliqué automatiquement au panier
+  COUPON       // Code promo ou coupon à clipper
+  CONDITIONAL  // Condition requise (quantité, bundle, etc.)
+  MEMBERSHIP   // Réservé aux membres (Prime, Costco, Club, etc.)
+  SALE         // Vente / promotion temporaire
+  BUNDLE       // Achat groupé / pack
+  CASHBACK     // Remboursement différé
+}
+
+// ─── Phase 1: Auth / User ─────────────────────────────────────────────────────
 
 model User {
-  id        String   @id @default(cuid())
-  clerkId   String   @unique
-  email     String   @unique
-  name      String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id               String    @id @default(cuid())
+  clerkId          String    @unique
+  email            String    @unique
+  name             String?
 
-  searches  PriceSearch[]
+  plan             Plan      @default(FREE)
+  planExpiresAt    DateTime?
+  stripeCustomerId String?   @unique
+  role             Role      @default(USER)
+
+  searchCountMonth Int       @default(0)
+  searchResetAt    DateTime  @default(now())
+
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  searches         PriceSearch[]
+  subscription     Subscription?
+  usageLogs        UsageLog[]
+  apiKeys          ApiKey[]
+
   @@map("users")
 }
 
-// ─── Phase 2: Core domain ─────────────────────────────────────────────────────
+model Subscription {
+  id                   String             @id @default(cuid())
+  userId               String             @unique
+  user                 User               @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  stripeSubscriptionId String             @unique
+  stripePriceId        String
+  stripeCustomerId     String
+
+  plan                 Plan
+  status               SubscriptionStatus
+  currentPeriodStart   DateTime
+  currentPeriodEnd     DateTime
+  cancelAtPeriodEnd    Boolean            @default(false)
+  canceledAt           DateTime?
+
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+
+  @@map("subscriptions")
+}
+
+// ─── Phase 2: Recherche & Comparaison de prix ─────────────────────────────────
+
+// Une recherche = une requête utilisateur (mot-clé, URL, UPC…)
 model PriceSearch {
-  id          String   @id @default(cuid())
-  userId      String
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id              String    @id @default(cuid())
+  userId          String
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  query       String
-  productUrl  String?
-  priceCAD    Decimal?
-  priceUSD    Decimal?
-  exchangeRate Decimal?
-  dutyRate    Decimal?
-  shippingCAD Decimal?
-  totalTruePrice Decimal?
+  // Input de la recherche
+  query           String               // texte brut entré par l'user
+  inputType       String?              // "keyword" | "url" | "upc" | "asin" | "model"
+  productUrl      String?              // URL source si fournie
 
-  createdAt   DateTime @default(now())
+  // Contexte géographique de l'user au moment de la recherche
+  userCountry     String?              // "CA", "US", "FR"…
+  userCurrency    String?              // "CAD", "USD", "EUR"…
+  userRegion      String?              // province / état (pour les taxes locales)
+
+  // Produit identifié
+  productName     String?
+  productBrand    String?
+  productCategory String?
+  productImageUrl String?
+  asin            String?              // Amazon ASIN si trouvé
+  upc             String?
+
+  // Meilleure offre calculée (snapshot au moment de la recherche)
+  bestOfferMarket String?              // "amazon.ca", "bestbuy.us"…
+  bestTruePrice   Decimal?            // vrai coût total le plus bas (devise user)
+
+  offers          ProductOffer[]
+  createdAt       DateTime @default(now())
 
   @@map("price_searches")
+}
+
+// Une offre = un résultat par marketplace pour une recherche donnée
+model ProductOffer {
+  id              String      @id @default(cuid())
+  searchId        String
+  search          PriceSearch @relation(fields: [searchId], references: [id], onDelete: Cascade)
+
+  // Identité du vendeur / marketplace
+  marketplace     String      // "amazon.ca", "amazon.com", "bestbuy.ca", "walmart.com"…
+  sellerName      String?     // "Amazon", "Best Buy", "Apple Store"
+  sellerCountry   String      // "CA", "US", "FR"…
+  currency        String      // devise native de cette offre ("CAD", "USD"…)
+  productUrl      String?     // URL directe vers la fiche produit
+
+  // Prix bruts (devise native du marketplace)
+  priceOriginal   Decimal     // prix barré / avant rabais
+  priceCurrent    Decimal     // prix actuel après rabais automatiques
+  priceLowest30d  Decimal?    // plus bas prix des 30 derniers jours (si disponible)
+
+  // Vrai coût calculé (converti en devise de l'utilisateur)
+  exchangeRate    Decimal?    // taux appliqué au moment du calcul
+  shippingCost    Decimal?    // frais de livraison (devise user)
+  dutyRate        Decimal?    // taux de droits de douane appliqué (%)
+  dutyAmount      Decimal?    // montant des droits calculé (devise user)
+  taxRate         Decimal?    // taux de taxe locale (%)
+  taxAmount       Decimal?    // montant de la taxe calculé (devise user)
+  brokerageFee    Decimal?    // frais de courtage douanier estimés
+  truePriceTotal  Decimal?    // total final = priceCurrent converti + shipping + duty + tax + brokerage
+
+  // Disponibilité & livraison
+  inStock         Boolean     @default(true)
+  stockQty        Int?
+  deliveryDays    Int?        // délai de livraison estimé (jours)
+  isPrime         Boolean     @default(false)  // Amazon Prime éligible
+
+  // Rabais appliqués à cette offre
+  discounts       Discount[]
+
+  scrapedAt       DateTime    @default(now())
+
+  @@map("product_offers")
+}
+
+// Rabais / promotions attachés à une offre
+model Discount {
+  id              String       @id @default(cuid())
+  offerId         String
+  offer           ProductOffer @relation(fields: [offerId], references: [id], onDelete: Cascade)
+
+  type            DiscountType
+
+  // Description lisible (ex: "Coupon 15 %", "Membres Prime", "Achetez-en 2, économisez 10 %")
+  label           String
+
+  // Valeur du rabais
+  amountOff       Decimal?    // montant fixe (devise native de l'offre)
+  percentOff      Decimal?    // pourcentage de réduction
+
+  // Conditions d'application
+  condition       String?     // texte décrivant la condition (ex: "Abonnement Amazon Prime requis")
+  minQty          Int?        // quantité minimale requise
+  code            String?     // code promo à saisir (si applicable)
+
+  // Validité
+  expiresAt       DateTime?   // date de fin (null = indéterminée)
+  startsAt        DateTime?   // date de début (si promotion future)
+
+  // Comportement
+  isStackable     Boolean     @default(false) // cumulable avec d'autres rabais
+  isAutoApplied   Boolean     @default(true)  // s'applique automatiquement ou action requise
+
+  createdAt       DateTime    @default(now())
+
+  @@map("discounts")
+}
+
+// ─── Phase 3: Usage & API ─────────────────────────────────────────────────────
+
+model UsageLog {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  action    String   // "search", "export_csv", "export_pdf", "api_call"
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  @@map("usage_logs")
+}
+
+model ApiKey {
+  id         String    @id @default(cuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name       String
+  keyHash    String    @unique // SHA-256, jamais la clé en clair
+  prefix     String            // ex: "tp_live_abc1" — affiché dans le dashboard
+  lastUsedAt DateTime?
+  isActive   Boolean   @default(true)
+  createdAt  DateTime  @default(now())
+
+  @@map("api_keys")
 }

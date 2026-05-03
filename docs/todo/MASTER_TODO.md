@@ -97,6 +97,70 @@ Voir section **STRIPE** ci-dessous pour le détail.
 - [ ] Sauvegarder chaque recherche dans `PriceSearch` (BD)
 - [ ] Compteur d'utilisation mensuelle dans le dashboard
 
+### 2D — Rabais & Promotions ⏳ ★ CRUCIAL
+
+> Chaque offre doit exposer tous les rabais disponibles : montant, condition, date de fin.
+> Schéma BD : `ProductOffer` → `Discount[]` (déjà défini dans `schema.prisma`).
+
+**Ce qu'on doit détecter et stocker par offre :**
+
+- [ ] **Rabais automatiques** — appliqués sans action (prix déjà réduit dans le panier)
+- [ ] **Coupons** — coupon Amazon à "clipper", codes promo à saisir au checkout
+  - Afficher le code si disponible
+  - Indiquer si l'action est requise avant l'achat (`isAutoApplied: false`)
+- [ ] **Offres conditionnelles** — "Achetez-en 2, économisez 10 %", "Avec échange", "Reconditionné certifié"
+  - Stocker la condition lisible dans `condition` (ex: "Quantité minimale : 2 unités")
+  - Stocker `minQty` si applicable
+- [ ] **Offres membres** — Amazon Prime, Costco Gold Star, Best Buy Totaltech…
+  - Type `MEMBERSHIP`, `condition` = "Abonnement Amazon Prime requis"
+  - Afficher clairement que c'est réservé aux membres
+- [ ] **Promotions temporaires** — Flash sale, Black Friday, vente de liquidation
+  - `expiresAt` quand connue (scraper la date de fin affichée sur la page)
+  - `startsAt` pour les promotions futures annoncées
+- [ ] **Cashback** — programmes de remboursement différé (Rakuten, carte de crédit, etc.)
+- [ ] **Bundles** — "Achat groupé avec accessoires à -20 %"
+
+**Affichage UI des rabais (Phase 2D) :**
+
+- [ ] Badge "RABAIS" cyan sur la carte offre si au moins un discount actif
+- [ ] Liste déroulante des rabais avec icône par type :
+  - 🏷️ Coupon / Code promo
+  - ⚡ Vente flash (avec compte à rebours si `expiresAt` proche)
+  - 👑 Membres seulement
+  - 📦 Offre conditionnelle (avec la condition explicite)
+  - 💰 Cashback
+- [ ] Indicateur "Se termine le [date]" en amber/warning si `expiresAt` < 72h
+- [ ] Prix barré `priceOriginal` visible quand différent de `priceCurrent`
+- [ ] Prix "après meilleur rabais" calculé = `priceCurrent` - rabais applicables empilables
+- [ ] Note claire si un rabais nécessite une action (cliquer, s'abonner, entrer un code)
+
+**Sources de rabais à scraper :**
+
+| Source | Type de rabais | Méthode de détection |
+|---|---|---|
+| Amazon (CA/US/EU) | Coupon clipper, Prime, Lightning deal, % off | Sélecteurs CSS dédiés + badge "Coupon" |
+| Best Buy | Vente, membre Totaltech, bundle | Balises JSON-LD + badges promo |
+| Apple Store | Remboursement avec échange, éducation | Section "façons d'économiser" |
+| Walmart | Rollback, clearance, pack | Badge + prix barré |
+| Costco | Membre seulement, coupon mensuel | PDF coupon + prix affiché |
+
+**Logique de calcul avec rabais :**
+
+```
+priceFinal = priceCurrent
+           - sum(discounts où isAutoApplied = true)
+           - meilleur(discounts cumulables où condition remplie)
+
+truePriceTotal = (priceFinal × exchangeRate)
+              + shippingCost
+              + dutyAmount
+              + taxAmount
+              + brokerageFee
+```
+
+- [ ] `lib/discounts.ts` — `applyDiscounts(offer, userContext)` → prix final
+- [ ] Avertir l'user si le meilleur prix nécessite une condition qu'il ne remplit pas (ex: pas membre Prime)
+
 ---
 
 ## PHASE 3 — Scraping / Sources de prix ⏳

@@ -1,90 +1,153 @@
-# TruePriceAI — Design System v1.0 Handoff
+# TruePriceAI
 
-**Date:** Mai 2026
-**Branche cible:** `feat/design-system-v1`
-**Repo:** `domlemay/trueprice-ai`
+> **Comparez les vrais coûts. Trouvez le meilleur prix, tous marchés confondus.**
+
+TruePriceAI calcule le **vrai coût total** d'un produit sur n'importe quel marché — taux de change, taxes locales, droits de douane, livraison et rabais inclus. En temps réel.
 
 ---
 
-## Pourquoi ce handoff ?
+## Pourquoi TruePriceAI ?
 
-Le brief de marque v1.0 (mai 2026) a établi une **nouvelle palette officielle** : cyan `#00D4C8` + navy `#0A1628`. Le codebase actuel utilise encore l'ancienne palette rouge `#D91F26`. Ce handoff :
+Le prix affiché n'est jamais le prix final. Un produit à 299 $ USD peut revenir à 520 $ CAD une fois le change, les douanes, les taxes provinciales et la livraison ajoutés — ou être moins cher que l'équivalent local. TruePriceAI fait ce calcul automatiquement pour tous les marchés accessibles depuis votre pays.
 
-1. Apporte le **système de design complet** dans `docs/design-system/`
-2. Met à jour `tailwind.config.ts` et `app/globals.css` à la nouvelle palette
-3. **Migre les composants existants** (`Hero`, `Navbar`, `Pricing`) à la nouvelle identité
-4. Ajoute un `CLAUDE.md` à la racine pour que Claude Code connaisse les règles à chaque session
+**Ce que l'app détecte et affiche :**
+- Prix actuels sur plusieurs marketplaces (Amazon.ca, Amazon.com, Best Buy, Apple Store, Walmart…)
+- Rabais automatiques, codes promo, offres conditionnelles (Prime, Club, quantité minimale…)
+- Date de fin des promotions quand disponible
+- Vrai coût total calculé : change + taxes + douanes + livraison + frais de courtage
+- Meilleure offre recommandée selon le marché accessible depuis votre pays
 
-## Comment appliquer
+---
+
+## État du projet — Mai 2026
+
+| Phase | Statut | Description |
+|---|---|---|
+| 0 — Fondations | ✅ Complet | Next.js 14, design system, monorepo Turborepo |
+| 1A — Auth | 🔄 En cours | Clerk v7, pages sign-in/sign-up, dashboard |
+| 1B — Base de données | ⏳ Prochain | Prisma + Neon, première migration |
+| 1C — Stripe | ⏳ À venir | Abonnements FREE / PREMIUM / ENTERPRISE |
+| 2 — Géolocalisation | ⏳ À venir | Détection marché, logique par pays |
+| 3 — Scraping & Prix | ⏳ À venir | Sources de prix, rabais, calcul vrai coût |
+| 4 — Export & API | ⏳ À venir | CSV, PDF, API publique |
+| 5 — IA | ⏳ À venir | Recommandations GPT-4o, alertes prix |
+
+---
+
+## Stack technique
+
+```
+apps/
+  web/        Next.js 14 · TypeScript strict · Tailwind 3.4 · shadcn/ui · Framer Motion
+  worker/     Service de scraping (Phase 3)
+
+packages/
+  db/         Prisma 6 · Neon PostgreSQL
+  api/        tRPC (Phase 2)
+  scraper/    Logique de scraping partagée (Phase 3)
+  shared/     Types & constantes partagés
+```
+
+**Services tiers :**
+- Auth : Clerk v7
+- Paiements : Stripe (à venir)
+- Base de données : Neon (PostgreSQL serverless)
+- Cache : Upstash Redis (Phase 3)
+- IA : OpenAI GPT-4o (Phase 5)
+
+---
+
+## Installation locale
 
 ```bash
-# 1. Cloner ton repo si pas déjà fait
+# 1. Cloner
 git clone https://github.com/domlemay/trueprice-ai.git
 cd trueprice-ai
-git checkout -b feat/design-system-v1
 
-# 2. Décompresser ce handoff à la racine du repo
-unzip ~/Downloads/handoff.zip -d ./
-
-# 3. Réinstaller les deps (au cas où, rien de nouveau requis)
+# 2. Installer les dépendances (toutes les workspaces)
 npm install
 
-# 4. Vérifier en local
+# 3. Configurer les variables d'environnement
+cp .env.example .env
+# → remplir les clés Clerk et l'URL Neon dans .env
+
+# 4. Lancer le dev
 npm run dev
-# → ouvrir http://localhost:3000
-
-# 5. Commit + PR
-git add .
-git commit -m "feat: design system v1.0 — migration vers cyan/navy"
-git push origin feat/design-system-v1
+# → http://localhost:3000
 ```
 
-## Ce qui est dans le bundle
+### Variables d'environnement requises (`.env`)
 
-```
-handoff/
-├── README.md                            ← ce fichier
-├── CLAUDE.md                            → racine du repo
-├── tailwind.config.ts                   → racine — REMPLACE l'existant
-├── app/
-│   └── globals.css                      → REMPLACE l'existant
-├── components/
-│   ├── ui/
-│   │   └── button.tsx                   → REMPLACE — variants mis à jour
-│   └── landing/
-│       ├── Hero.tsx                     → REMPLACE
-│       ├── Navbar.tsx                   → REMPLACE
-│       └── Pricing.tsx                  → REMPLACE
-├── docs/
-│   └── design-system/                   → NOUVEAU dossier
-│       ├── README.md                    (foundations complètes)
-│       ├── SKILL.md                     (manifeste pour Claude Code)
-│       ├── colors_and_type.css
-│       ├── tokens.json
-│       ├── assets/                      (logos SVG)
-│       ├── platform/                    (Flutter + Tailwind drop-ins)
-│       ├── preview/                     (cartes design system)
-│       └── ui_kits/                     (marketing / particulier / entreprise)
-└── MIGRATION.md                         ← détail des changements
+```env
+# Clerk — https://dashboard.clerk.com/
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_...
+CLERK_SECRET_KEY=sk_test_...
+NEXT_PUBLIC_CLERK_SIGN_IN_URL=/sign-in
+NEXT_PUBLIC_CLERK_SIGN_UP_URL=/sign-up
+NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL=/dashboard
+NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL=/dashboard
+
+# Neon — https://neon.tech/
+DATABASE_URL=postgresql://...
 ```
 
-## Mapping des couleurs (legacy → v1.0)
+---
 
-| Avant | Après | Usage |
-|---|---|---|
-| `brand-red` `#D91F26` | `tp-cyan-500` `#00D4C8` | CTA principal, accents |
-| `brand-red-dark` `#B01920` | `tp-cyan-600` `#00A89E` | Hover CTA |
-| `brand-red-light` `#F5383F` | `tp-cyan-300` `#4DFFF8` | Highlight / glow |
-| `brand-navy` `#1B2A4A` | `tp-navy-700` `#0A1628` | Background dark |
-| `brand-navy-light` `#243761` | `tp-navy-600` `#0D2140` | Header / sidebar |
+## Commandes utiles
 
-## ⚠️ Notes importantes
+```bash
+npm run dev          # Lance tous les workspaces (Turbo)
+npm run build        # Build de production
+npm run typecheck    # Vérification TypeScript (0 erreurs)
+npm run lint         # ESLint
 
-- **Le rouge disparaît du chrome.** Il ne reste qu'avec les drapeaux 🇺🇸 (emoji natif) et l'erreur sémantique.
-- **Texte CTA :** sur cyan, le texte devient **navy** (pas blanc) — meilleur contraste.
-- **Glow signature :** les CTA primary obtiennent maintenant `shadow-tp-glow` au hover, pas `shadow-brand-red/30`.
-- Les fonts passent de Segoe UI à **DM Sans / Syne / JetBrains Mono** — chargées via Google Fonts dans `layout.tsx` (à ajouter, voir MIGRATION.md).
+# Base de données (depuis packages/db/)
+npm run db:generate  # Génère le Prisma Client
+npm run db:push      # Applique le schéma sur Neon (dev)
+npm run db:migrate   # Migration versionnée (production)
+npm run db:studio    # Prisma Studio (UI visuelle)
+```
 
-## Pour Claude Code (et sessions futures)
+---
 
-Le fichier `CLAUDE.md` à la racine sera lu automatiquement à chaque session. Il pointe vers `docs/design-system/SKILL.md` pour les règles complètes. Aucune action manuelle requise — Claude Code saura à partir de la prochaine ouverture du repo.
+## Design system
+
+Palette : **cyan `#00D4C8`** + **navy `#0A1628`** · Mode sombre par défaut
+Tokens : `tp-*` (jamais `brand-*`)
+Fonts : Syne (display) · DM Sans (body) · JetBrains Mono (prix/code)
+
+Voir `docs/design-system/README.md` pour les règles complètes.
+
+---
+
+## Structure des données — Rabais & Promotions
+
+Chaque recherche de prix retourne des `ProductOffer` (une par marketplace). Chaque offre peut avoir plusieurs `Discount` :
+
+```
+PriceSearch
+└── ProductOffer[]          (une par marketplace)
+    ├── priceOriginal       prix barré
+    ├── priceCurrent        prix après rabais automatiques
+    ├── truePriceTotal      vrai coût total (change + taxes + douanes + livraison)
+    └── Discount[]
+        ├── type            AUTOMATIC | COUPON | CONDITIONAL | MEMBERSHIP | SALE | BUNDLE | CASHBACK
+        ├── label           "Coupon 15 %" · "Membres Prime" · "Achetez-en 2, économisez 10 %"
+        ├── percentOff      15
+        ├── condition       "Abonnement Amazon Prime requis"
+        ├── code            "SAVE15" (si code promo)
+        ├── expiresAt       2026-06-15 (si connue)
+        └── isAutoApplied   true | false
+```
+
+---
+
+## Feuille de route complète
+
+Voir [`docs/todo/MASTER_TODO.md`](docs/todo/MASTER_TODO.md)
+
+---
+
+## Licence
+
+Propriétaire — © 2026 TruePriceAI. Tous droits réservés.
