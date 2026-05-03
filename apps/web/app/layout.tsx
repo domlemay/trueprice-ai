@@ -15,21 +15,23 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "TruePriceAI — Payez le vrai prix. Pas le prix canadien.",
+  title: "TruePriceAI — Comparez les vrais coûts. Trouvez le meilleur prix.",
   description:
-    "Comparez les prix Canada vs USA en tenant compte du taux de change, des taxes et des frais de douane. En temps réel.",
+    "Calculez le vrai coût total de n'importe quel produit sur tous les marchés — taux de change, taxes locales, droits de douane et livraison inclus. En temps réel.",
   keywords: [
-    "comparaison prix Canada USA",
-    "vrai prix",
+    "comparaison prix internationale",
+    "vrai coût total",
     "taux de change",
-    "douanes Canada",
-    "shopping Canada",
+    "droits de douane",
+    "meilleur prix",
+    "taxes locales",
+    "shopping international",
     "TruePriceAI",
   ],
   openGraph: {
-    title: "TruePriceAI — Payez le vrai prix. Pas le prix canadien.",
+    title: "TruePriceAI — Comparez les vrais coûts. Trouvez le meilleur prix.",
     description:
-      "Comparez les prix Canada vs USA en tenant compte du taux de change, des taxes et des frais de douane. En temps réel.",
+      "Calculez le vrai coût total de n'importe quel produit sur tous les marchés — taux de change, taxes locales, droits de douane et livraison inclus. En temps réel.",
     type: "website",
     locale: "fr_CA",
   },

@@ -54,9 +54,9 @@ export function Hero() {
               variants={itemVariants}
               className="font-display text-4xl sm:text-5xl lg:text-6xl font-bold text-white leading-[1.05] tracking-tight mb-6"
             >
-              Payez le{" "}
+              Comparez les{" "}
               <span className="relative">
-                <span className="text-tp-cyan-500">vrai prix.</span>
+                <span className="text-tp-cyan-500">vrais coûts.</span>
                 <motion.span
                   className="absolute -bottom-2 left-0 w-full h-1 bg-tp-cyan-500/40 rounded-full"
                   initial={{ scaleX: 0 }}
@@ -65,15 +65,15 @@ export function Hero() {
                 />
               </span>
               <br />
-              Pas le prix canadien.
+              Trouvez le meilleur prix, tous marchés confondus.
             </motion.h1>
 
             <motion.p
               variants={itemVariants}
               className="text-lg text-white/70 leading-relaxed mb-8 max-w-xl mx-auto lg:mx-0"
             >
-              Comparez les prix Canada vs USA en tenant compte du taux de
-              change, des taxes et des frais de douane.{" "}
+              Calculez le vrai coût total d'un produit sur n'importe quel marché —
+              taux de change, taxes locales, droits de douane et livraison inclus.{" "}
               <span className="text-white font-medium">En temps réel.</span>
             </motion.p>
 

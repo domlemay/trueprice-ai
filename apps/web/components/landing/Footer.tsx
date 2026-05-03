@@ -46,7 +46,7 @@ export function Footer() {
               </span>
             </Link>
             <p className="text-white/40 text-sm leading-relaxed mb-4">
-              Payez le vrai prix. Pas le prix canadien.
+              Comparez les vrais coûts. Trouvez le meilleur prix, tous marchés confondus.
             </p>
             <div className="flex items-center gap-2 text-xs text-white/30">
               <span>🍁</span>
