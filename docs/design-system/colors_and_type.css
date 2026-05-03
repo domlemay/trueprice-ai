@@ -1,0 +1,320 @@
+/* ==========================================================================
+   TruePriceAI — Colors & Type
+   Source-of-truth tokens for the design system.
+   Import: <link rel="stylesheet" href="colors_and_type.css">
+   ========================================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Syne:wght@500;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap');
+
+/* --------------------------------------------------------------------------
+   1. PRIMITIVE COLOR SCALES
+   -------------------------------------------------------------------------- */
+:root {
+  /* Cyan — signature accent */
+  --tp-cyan-50:  #E0FFFE;
+  --tp-cyan-100: #B3FEFA;
+  --tp-cyan-200: #80FDF7;
+  --tp-cyan-300: #4DFFF8;  /* highlight / glow */
+  --tp-cyan-400: #00E5DB;
+  --tp-cyan-500: #00D4C8;  /* ★ primary (dark mode) */
+  --tp-cyan-600: #00A89E;  /* hover */
+  --tp-cyan-700: #0D9488;  /* ★ primary (light mode) */
+  --tp-cyan-800: #007A72;  /* pressed */
+  --tp-cyan-900: #005C56;
+
+  /* Navy — signature dark surface */
+  --tp-navy-50:  #E8EDF5;
+  --tp-navy-100: #C5D0E3;
+  --tp-navy-200: #8A9DBE;
+  --tp-navy-300: #4F6A99;
+  --tp-navy-400: #1E3A6E;
+  --tp-navy-500: #132240;
+  --tp-navy-600: #0D2140;  /* header / sidebar */
+  --tp-navy-700: #0A1628;  /* ★ dark background */
+  --tp-navy-800: #071020;
+  --tp-navy-900: #040A14;
+
+  /* Neutrals */
+  --tp-gray-50:  #F8FAFC;
+  --tp-gray-100: #F0F4F8;
+  --tp-gray-200: #E2E8F0;
+  --tp-gray-300: #CBD5E0;
+  --tp-gray-400: #A0AEC0;
+  --tp-gray-500: #718096;
+  --tp-gray-600: #4A5568;
+  --tp-gray-700: #2D3748;
+  --tp-gray-800: #1A202C;
+  --tp-gray-900: #0F141C;
+
+  --tp-white: #FFFFFF;
+  --tp-black: #040A14;
+
+  /* Semantic */
+  --tp-success:       #2D9E5F;
+  --tp-success-light: #4CAF7D;
+  --tp-success-dark:  #1A7A45;
+  --tp-warning:       #F5A623;
+  --tp-warning-light: #FFD166;
+  --tp-warning-dark:  #C47F0A;
+  --tp-error:         #E53935;
+  --tp-error-light:   #FF6B6B;
+  --tp-error-dark:    #B71C1C;
+  --tp-info:          #1976D2;
+  --tp-info-light:    #64B5F6;
+  --tp-info-dark:     #0D47A1;
+}
+
+/* --------------------------------------------------------------------------
+   2. SEMANTIC TOKENS — DARK (default)
+   -------------------------------------------------------------------------- */
+:root,
+[data-theme="dark"] {
+  /* Backgrounds */
+  --tp-bg-base:     #0A1628;
+  --tp-bg-elevated: #0D2140;
+  --tp-bg-overlay:  #071020;
+  --tp-bg-surface:  #0F1E36;
+  --tp-bg-card:     #112040;
+  --tp-bg-input:    #0D1E38;
+
+  /* Borders */
+  --tp-border-default: rgba(0, 212, 200, 0.15);
+  --tp-border-subtle:  rgba(255, 255, 255, 0.06);
+  --tp-border-strong:  rgba(0, 212, 200, 0.40);
+
+  /* Text */
+  --tp-fg1: #FFFFFF;                       /* primary */
+  --tp-fg2: rgba(255, 255, 255, 0.70);     /* secondary */
+  --tp-fg3: rgba(255, 255, 255, 0.40);     /* muted / placeholder */
+  --tp-fg-accent:  #00D4C8;
+  --tp-fg-inverse: #0A1628;
+
+  /* Accent */
+  --tp-accent:        #00D4C8;
+  --tp-accent-hover:  #00A89E;
+  --tp-accent-press:  #007A72;
+  --tp-accent-subtle: rgba(0, 212, 200, 0.10);
+  --tp-accent-glow:   rgba(0, 212, 200, 0.35);
+
+  /* Buttons */
+  --tp-btn-primary-bg:    #00D4C8;
+  --tp-btn-primary-fg:    #0A1628;
+  --tp-btn-primary-hover: #00A89E;
+}
+
+/* --------------------------------------------------------------------------
+   3. SEMANTIC TOKENS — LIGHT
+   -------------------------------------------------------------------------- */
+[data-theme="light"] {
+  --tp-bg-base:     #FFFFFF;
+  --tp-bg-elevated: #F8FAFC;
+  --tp-bg-overlay:  #F0F5FA;
+  --tp-bg-surface:  #FFFFFF;
+  --tp-bg-card:     #F8FBFE;
+  --tp-bg-input:    #F4F7FA;
+
+  --tp-border-default: rgba(13, 148, 136, 0.20);
+  --tp-border-subtle:  rgba(0, 0, 0, 0.06);
+  --tp-border-strong:  rgba(13, 148, 136, 0.50);
+
+  --tp-fg1: #0A1628;
+  --tp-fg2: #132240;
+  --tp-fg3: #718096;
+  --tp-fg-accent:  #0D9488;
+  --tp-fg-inverse: #FFFFFF;
+
+  --tp-accent:        #0D9488;
+  --tp-accent-hover:  #007A72;
+  --tp-accent-press:  #005C56;
+  --tp-accent-subtle: rgba(13, 148, 136, 0.08);
+  --tp-accent-glow:   rgba(13, 148, 136, 0.20);
+
+  --tp-btn-primary-bg:    #0D9488;
+  --tp-btn-primary-fg:    #FFFFFF;
+  --tp-btn-primary-hover: #007A72;
+}
+
+/* --------------------------------------------------------------------------
+   4. TYPOGRAPHY
+   --------------------------------------------------------------------------
+   Font roles:
+     --tp-font-display  Syne — hero titles, large numerals, marketing accents
+     --tp-font-body     DM Sans — UI, body, labels (default)
+     --tp-font-mono     JetBrains Mono — prices, codes, data tables
+   -------------------------------------------------------------------------- */
+:root {
+  --tp-font-display: 'Syne', 'DM Sans', system-ui, sans-serif;
+  --tp-font-body:    'DM Sans', system-ui, -apple-system, sans-serif;
+  --tp-font-mono:    'JetBrains Mono', 'Fira Code', Consolas, monospace;
+
+  /* Type scale */
+  --tp-text-xs:   12px;
+  --tp-text-sm:   14px;
+  --tp-text-base: 16px;
+  --tp-text-lg:   18px;
+  --tp-text-xl:   20px;
+  --tp-text-2xl:  24px;
+  --tp-text-3xl:  30px;
+  --tp-text-4xl:  36px;
+  --tp-text-5xl:  48px;
+  --tp-text-6xl:  64px;
+
+  /* Tracking */
+  --tp-tracking-tight: -0.02em;   /* display titles */
+  --tp-tracking-normal: 0;
+  --tp-tracking-label: 0.08em;    /* uppercase labels / badges */
+  --tp-tracking-wide:  0.12em;    /* tiny eyebrow caps */
+}
+
+/* --------------------------------------------------------------------------
+   5. SPACING / RADIUS / SHADOW
+   -------------------------------------------------------------------------- */
+:root {
+  /* 4-pt spacing scale */
+  --tp-space-1:  4px;
+  --tp-space-2:  8px;
+  --tp-space-3:  12px;
+  --tp-space-4:  16px;
+  --tp-space-5:  20px;
+  --tp-space-6:  24px;
+  --tp-space-8:  32px;
+  --tp-space-10: 40px;
+  --tp-space-12: 48px;
+  --tp-space-16: 64px;
+  --tp-space-20: 80px;
+  --tp-space-24: 96px;
+
+  /* Radius */
+  --tp-radius-sm:   4px;
+  --tp-radius-md:   8px;   /* buttons, inputs */
+  --tp-radius-lg:   12px;  /* cards */
+  --tp-radius-xl:   16px;
+  --tp-radius-2xl:  24px;
+  --tp-radius-full: 9999px;
+
+  /* Shadow */
+  --tp-shadow-sm:          0 1px 3px rgba(0, 0, 0, 0.30);
+  --tp-shadow-md:          0 4px 12px rgba(0, 0, 0, 0.40);
+  --tp-shadow-lg:          0 8px 24px rgba(0, 0, 0, 0.50);
+  --tp-shadow-glow:        0 0 20px rgba(0, 212, 200, 0.30);
+  --tp-shadow-glow-strong: 0 0 40px rgba(0, 212, 200, 0.50);
+  --tp-shadow-glow-light:  0 0 16px rgba(13, 148, 136, 0.20);
+
+  /* Motion */
+  --tp-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --tp-ease-in:  cubic-bezier(0.7, 0, 0.84, 0);
+  --tp-dur-fast:   150ms;
+  --tp-dur-base:   250ms;
+  --tp-dur-slow:   400ms;
+  --tp-dur-page:   600ms;
+}
+
+/* --------------------------------------------------------------------------
+   6. SEMANTIC TYPE STYLES — apply via class
+   -------------------------------------------------------------------------- */
+.tp-display-1 {
+  font-family: var(--tp-font-display);
+  font-weight: 700;
+  font-size: clamp(40px, 6vw, 64px);
+  line-height: 1.05;
+  letter-spacing: var(--tp-tracking-tight);
+  color: var(--tp-fg1);
+}
+.tp-display-2 {
+  font-family: var(--tp-font-display);
+  font-weight: 700;
+  font-size: clamp(32px, 4.5vw, 48px);
+  line-height: 1.1;
+  letter-spacing: var(--tp-tracking-tight);
+  color: var(--tp-fg1);
+}
+.tp-h1 {
+  font-family: var(--tp-font-display);
+  font-weight: 700;
+  font-size: 36px;
+  line-height: 1.15;
+  letter-spacing: var(--tp-tracking-tight);
+  color: var(--tp-fg1);
+}
+.tp-h2 {
+  font-family: var(--tp-font-display);
+  font-weight: 700;
+  font-size: 28px;
+  line-height: 1.2;
+  letter-spacing: var(--tp-tracking-tight);
+  color: var(--tp-fg1);
+}
+.tp-h3 {
+  font-family: var(--tp-font-body);
+  font-weight: 700;
+  font-size: 20px;
+  line-height: 1.3;
+  color: var(--tp-fg1);
+}
+.tp-h4 {
+  font-family: var(--tp-font-body);
+  font-weight: 500;
+  font-size: 16px;
+  line-height: 1.4;
+  color: var(--tp-fg1);
+}
+.tp-body {
+  font-family: var(--tp-font-body);
+  font-weight: 400;
+  font-size: 16px;
+  line-height: 1.55;
+  color: var(--tp-fg2);
+}
+.tp-body-sm {
+  font-family: var(--tp-font-body);
+  font-weight: 400;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--tp-fg2);
+}
+.tp-caption {
+  font-family: var(--tp-font-body);
+  font-weight: 400;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--tp-fg3);
+}
+.tp-label {
+  font-family: var(--tp-font-body);
+  font-weight: 500;
+  font-size: 11px;
+  line-height: 1.2;
+  letter-spacing: var(--tp-tracking-label);
+  text-transform: uppercase;
+  color: var(--tp-fg-accent);
+}
+.tp-eyebrow {
+  font-family: var(--tp-font-body);
+  font-weight: 500;
+  font-size: 12px;
+  line-height: 1.2;
+  letter-spacing: var(--tp-tracking-wide);
+  text-transform: uppercase;
+  color: var(--tp-fg-accent);
+}
+.tp-mono,
+.tp-price {
+  font-family: var(--tp-font-mono);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+  color: var(--tp-fg1);
+}
+
+/* --------------------------------------------------------------------------
+   7. BASE — apply when this stylesheet is the only one
+   -------------------------------------------------------------------------- */
+.tp-root {
+  background: var(--tp-bg-base);
+  color: var(--tp-fg1);
+  font-family: var(--tp-font-body);
+  font-size: var(--tp-text-base);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
