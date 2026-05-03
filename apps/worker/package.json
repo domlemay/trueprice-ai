@@ -1,0 +1,14 @@
+{
+  "name": "@trueprice-ai/worker",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "echo 'worker: not implemented yet'",
+    "build": "echo 'worker: not implemented yet'",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "typescript": "^5.7.3"
+  }
+}
