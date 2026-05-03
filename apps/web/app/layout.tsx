@@ -43,7 +43,7 @@ export default function RootLayout({
   return (
     <html lang="fr-CA" className={inter.variable}>
       <body className={inter.className}>
-        <ClerkProvider>
+        <ClerkProvider afterSignOutUrl="/" signInUrl="/sign-in" signUpUrl="/sign-up">
           <Show when="signed-out">
             <span className="sr-only">
               <SignInButton />
