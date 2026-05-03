@@ -1,53 +1,82 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Syne:wght@500;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222 47% 11%;
-    --card: 0 0% 100%;
-    --card-foreground: 222 47% 11%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 222 47% 11%;
-    --primary: 356 76% 49%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 220 26% 14%;
+    /* ── TruePriceAI v1.0 — dark default ── */
+    --background: 213 60% 10%;          /* #0A1628 */
+    --foreground: 0 0% 100%;
+    --card: 218 56% 16%;                /* #112040 */
+    --card-foreground: 0 0% 100%;
+    --popover: 217 53% 15%;             /* #0D2140 */
+    --popover-foreground: 0 0% 100%;
+    --primary: 176 100% 42%;            /* #00D4C8 */
+    --primary-foreground: 213 60% 10%;  /* navy text on cyan */
+    --secondary: 217 53% 15%;           /* #0D2140 */
     --secondary-foreground: 0 0% 100%;
+    --muted: 218 56% 16%;
+    --muted-foreground: 0 0% 70%;
+    --accent: 176 100% 42%;
+    --accent-foreground: 213 60% 10%;
+    --destructive: 1 78% 55%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 176 100% 42% / 0.15;
+    --input: 217 51% 13%;               /* #0D1E38 */
+    --ring: 176 100% 42%;
+    --radius: 0.75rem;
+  }
+
+  .light {
+    --background: 0 0% 100%;
+    --foreground: 213 60% 10%;
+    --card: 210 40% 99%;
+    --card-foreground: 213 60% 10%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 213 60% 10%;
+    --primary: 174 84% 32%;             /* #0D9488 */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 213 60% 10%;
     --muted: 210 40% 96%;
     --muted-foreground: 215 16% 47%;
-    --accent: 210 40% 96%;
-    --accent-foreground: 222 47% 11%;
-    --destructive: 0 84% 60%;
+    --accent: 174 84% 32%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 1 78% 55%;
     --destructive-foreground: 0 0% 100%;
-    --border: 214 32% 91%;
-    --input: 214 32% 91%;
-    --ring: 356 76% 49%;
-    --radius: 0.75rem;
+    --border: 174 84% 32% / 0.20;
+    --input: 210 30% 97%;
+    --ring: 174 84% 32%;
   }
 }
 
 @layer base {
-  * {
-    @apply border-border;
-  }
+  * { @apply border-border; }
   body {
     @apply bg-background text-foreground antialiased;
+    font-family: 'DM Sans', system-ui, -apple-system, sans-serif;
     font-feature-settings: "rlig" 1, "calt" 1;
   }
-  html {
-    scroll-behavior: smooth;
-  }
+  html { scroll-behavior: smooth; }
+  h1, h2, .display { font-family: 'Syne', 'DM Sans', system-ui, sans-serif; letter-spacing: -0.02em; }
+  code, .mono, .price { font-family: 'JetBrains Mono', monospace; font-variant-numeric: tabular-nums; }
 }
 
 @layer utilities {
-  .text-balance {
-    text-wrap: balance;
-  }
+  .text-balance { text-wrap: balance; }
+  /* ─── Gradient texts (cyan replaces legacy red) ─── */
   .gradient-text {
-    @apply bg-gradient-to-r from-brand-red to-brand-red-light bg-clip-text text-transparent;
+    @apply bg-gradient-to-r from-tp-cyan-500 to-tp-cyan-300 bg-clip-text text-transparent;
   }
   .gradient-text-navy {
-    @apply bg-gradient-to-r from-brand-navy to-brand-navy-light bg-clip-text text-transparent;
+    @apply bg-gradient-to-r from-tp-navy-700 to-tp-navy-600 bg-clip-text text-transparent;
   }
+  /* ─── Glow utilities ─── */
+  .glow-cyan { box-shadow: 0 0 20px rgba(0, 212, 200, 0.30); }
+  .glow-cyan-strong { box-shadow: 0 0 40px rgba(0, 212, 200, 0.50); }
+  /* ─── Surfaces ─── */
+  .surface-card { @apply bg-tp-card border border-tp-cyan-500/15 rounded-xl shadow-tp-md; }
+  .surface-card-hover { @apply hover:border-tp-cyan-500/35 hover:shadow-tp-lg transition-all; }
 }

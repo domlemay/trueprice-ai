@@ -6,20 +6,24 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg text-sm font-semibold ring-offset-background transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg text-sm font-semibold ring-offset-background transition-all duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
   {
     variants: {
       variant: {
+        // ── TruePriceAI v1.0 — cyan primary on navy ──
         default:
-          "bg-brand-red text-white hover:bg-brand-red-dark shadow-lg hover:shadow-xl hover:-translate-y-0.5 active:translate-y-0",
+          "bg-tp-cyan-500 text-tp-navy-700 hover:bg-tp-cyan-600 hover:-translate-y-0.5 hover:shadow-tp-glow active:translate-y-0",
         outline:
-          "border-2 border-white text-white hover:bg-white hover:text-brand-navy",
+          "border-2 border-tp-cyan-500/40 text-tp-cyan-500 hover:bg-tp-cyan-500/8 hover:border-tp-cyan-500",
         outlineNavy:
-          "border-2 border-brand-navy text-brand-navy hover:bg-brand-navy hover:text-white",
-        ghost: "hover:bg-accent hover:text-accent-foreground",
-        link: "text-brand-red underline-offset-4 hover:underline",
+          "border-2 border-tp-navy-700 text-tp-navy-700 hover:bg-tp-navy-700 hover:text-white",
+        ghost: "text-white/80 hover:bg-white/5 hover:text-white",
+        link: "text-tp-cyan-500 underline-offset-4 hover:underline",
         navy:
-          "bg-brand-navy text-white hover:bg-brand-navy-light shadow-lg hover:shadow-xl hover:-translate-y-0.5",
+          "bg-tp-navy-600 text-white hover:bg-tp-navy-500 hover:-translate-y-0.5 hover:shadow-tp-md",
+        // Aliases legacy — pointent vers les nouveaux variants
+        secondary:
+          "border-2 border-tp-cyan-500/40 text-tp-cyan-500 hover:bg-tp-cyan-500/8",
       },
       size: {
         default: "h-11 px-6 py-2",

@@ -1,0 +1,44 @@
+/* Shared chrome for design-system preview cards (~700×var px) */
+@import url('../colors_and_type.css');
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  background: var(--tp-bg-base);
+  color: var(--tp-fg1);
+  font-family: var(--tp-font-body);
+  -webkit-font-smoothing: antialiased;
+}
+.tp-card-frame {
+  width: 700px;
+  padding: 20px 24px;
+  background: var(--tp-bg-base);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.tp-card-frame.light {
+  background: #FFFFFF;
+  color: #0A1628;
+}
+.row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.col { display: flex; flex-direction: column; gap: 6px; }
+.swatch {
+  width: 80px; height: 56px; border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.06);
+  display: flex; flex-direction: column; justify-content: flex-end;
+  padding: 6px 8px;
+  font-family: var(--tp-font-mono);
+  font-size: 10px;
+  color: rgba(255,255,255,0.85);
+}
+.swatch.dark-text { color: rgba(10,22,40,0.85); }
+.swatch .name { font-weight: 700; letter-spacing: 0; }
+.swatch .hex { opacity: 0.75; }
+.lbl {
+  font-family: var(--tp-font-body);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--tp-fg-accent);
+  font-weight: 500;
+}

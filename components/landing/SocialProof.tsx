@@ -5,38 +5,22 @@ import { motion } from "framer-motion";
 import { Star, Users, TrendingDown, Award } from "lucide-react";
 
 const stats = [
-  {
-    icon: <Users className="w-5 h-5 text-brand-red" />,
-    value: "2 400+",
-    label: "Canadiens ce mois-ci",
-  },
-  {
-    icon: <Star className="w-5 h-5 text-yellow-500" />,
-    value: "4.9 / 5",
-    label: "Satisfaction moyenne",
-  },
-  {
-    icon: <TrendingDown className="w-5 h-5 text-green-600" />,
-    value: "340 $",
-    label: "Économies moyennes / an",
-  },
-  {
-    icon: <Award className="w-5 h-5 text-blue-500" />,
-    value: "15+",
-    label: "Boutiques comparées",
-  },
+  { icon: <Users className="w-5 h-5 text-tp-cyan-500" />, value: "2 400+", label: "Canadiens ce mois-ci" },
+  { icon: <Star className="w-5 h-5 text-tp-warning" />, value: "4.9 / 5", label: "Satisfaction moyenne" },
+  { icon: <TrendingDown className="w-5 h-5 text-tp-success" />, value: "340 $", label: "Économies moyennes / an" },
+  { icon: <Award className="w-5 h-5 text-tp-info" />, value: "15+", label: "Boutiques comparées" },
 ];
 
 const logos = [
-  { name: "r/Quebec", bg: "bg-orange-500", text: "reddit" },
-  { name: "r/PersoFinance", bg: "bg-orange-400", text: "reddit" },
-  { name: "Les Affaires", bg: "bg-blue-700", text: "media" },
-  { name: "Tech Québec", bg: "bg-teal-600", text: "org" },
+  { name: "r/Quebec", bg: "bg-orange-500/80" },
+  { name: "r/PersoFinance", bg: "bg-orange-400/80" },
+  { name: "Les Affaires", bg: "bg-tp-info/70" },
+  { name: "Tech Québec", bg: "bg-teal-600/80" },
 ];
 
 export function SocialProof() {
   return (
-    <section className="py-12 bg-white border-b border-gray-100">
+    <section className="py-12 bg-tp-card border-b border-tp-cyan-500/10">
       <div className="container mx-auto px-4 max-w-7xl">
         {/* Stats bar */}
         <motion.div
@@ -44,21 +28,21 @@ export function SocialProof() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.5 }}
-          className="grid grid-cols-2 lg:grid-cols-4 gap-6 mb-10"
+          className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-10"
         >
           {stats.map((stat) => (
             <div
               key={stat.label}
-              className="flex items-center gap-3 p-4 rounded-2xl bg-gray-50 border border-gray-100 hover:shadow-md transition-shadow"
+              className="flex items-center gap-3 p-4 rounded-2xl bg-white/3 border border-tp-cyan-500/15 hover:border-tp-cyan-500/30 hover:shadow-tp-md transition-all"
             >
-              <div className="w-10 h-10 rounded-xl bg-white shadow-sm flex items-center justify-center shrink-0">
+              <div className="w-10 h-10 rounded-xl bg-tp-navy-700 border border-tp-cyan-500/15 flex items-center justify-center shrink-0">
                 {stat.icon}
               </div>
               <div>
-                <div className="text-xl font-extrabold text-brand-navy leading-none">
+                <div className="font-mono text-xl font-bold text-white tabular-nums leading-none">
                   {stat.value}
                 </div>
-                <div className="text-xs text-gray-500 mt-0.5">{stat.label}</div>
+                <div className="text-xs text-white/50 mt-0.5">{stat.label}</div>
               </div>
             </div>
           ))}
@@ -72,14 +56,14 @@ export function SocialProof() {
           transition={{ duration: 0.5, delay: 0.2 }}
           className="flex flex-col sm:flex-row items-center justify-center gap-4"
         >
-          <span className="text-xs text-gray-400 font-medium uppercase tracking-wider whitespace-nowrap">
+          <span className="text-xs text-white/30 font-medium uppercase tracking-wider whitespace-nowrap">
             Vu sur
           </span>
-          <div className="flex items-center gap-4 flex-wrap justify-center">
+          <div className="flex items-center gap-3 flex-wrap justify-center">
             {logos.map((logo) => (
               <div
                 key={logo.name}
-                className={`flex items-center gap-2 px-4 py-2 rounded-xl ${logo.bg} text-white text-sm font-semibold opacity-80 hover:opacity-100 transition-opacity`}
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg ${logo.bg} text-white text-xs font-semibold`}
               >
                 <span>🍁</span>
                 {logo.name}
@@ -88,9 +72,9 @@ export function SocialProof() {
           </div>
           <div className="flex items-center gap-1">
             {[...Array(5)].map((_, i) => (
-              <Star key={i} className="w-4 h-4 text-yellow-400 fill-yellow-400" />
+              <Star key={i} className="w-4 h-4 text-tp-warning fill-tp-warning" />
             ))}
-            <span className="text-sm font-semibold text-gray-700 ml-1">4.9</span>
+            <span className="font-mono text-sm font-semibold text-white ml-1">4.9</span>
           </div>
         </motion.div>
       </div>

@@ -1,0 +1,62 @@
+/* TruePriceAI UI kit shared styles */
+@import url('../../colors_and_type.css');
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: var(--tp-bg-base);
+  color: var(--tp-fg1);
+  font-family: var(--tp-font-body);
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+}
+button { font-family: inherit; cursor: pointer; border: none; background: none; color: inherit; }
+input, textarea { font-family: inherit; }
+a { color: inherit; text-decoration: none; }
+
+/* === Buttons === */
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; border-radius: 8px; font-weight: 500; font-size: 14px; padding: 10px 18px; transition: all .2s var(--tp-ease-out); white-space: nowrap; }
+.btn-primary { background: var(--tp-cyan-500); color: var(--tp-navy-700); }
+.btn-primary:hover { background: var(--tp-cyan-600); transform: translateY(-1px); box-shadow: 0 0 20px rgba(0,212,200,.35); }
+.btn-secondary { background: transparent; color: var(--tp-cyan-500); border: 1px solid rgba(0,212,200,.4); }
+.btn-secondary:hover { background: rgba(0,212,200,.08); }
+.btn-ghost { background: transparent; color: rgba(255,255,255,.8); }
+.btn-ghost:hover { color: #fff; background: rgba(255,255,255,.05); }
+.btn-lg { padding: 14px 26px; font-size: 16px; }
+.btn-sm { padding: 7px 14px; font-size: 12px; border-radius: 6px; }
+
+/* === Card === */
+.card { background: var(--tp-bg-card); border: 1px solid rgba(0,212,200,.15); border-radius: 12px; padding: 20px 24px; box-shadow: 0 4px 12px rgba(0,0,0,.4); transition: border-color .2s var(--tp-ease-out), box-shadow .2s var(--tp-ease-out); }
+.card:hover { border-color: rgba(0,212,200,.35); box-shadow: 0 8px 24px rgba(0,0,0,.5); }
+.card-featured { background: linear-gradient(135deg, rgba(0,212,200,.08), rgba(0,212,200,.02)); border-color: rgba(0,212,200,.5); box-shadow: 0 0 32px rgba(0,212,200,.15); }
+
+/* === Inputs === */
+.input { background: var(--tp-bg-input); border: 1px solid rgba(0,212,200,.15); border-radius: 8px; padding: 10px 14px; color: #fff; font-size: 14px; outline: none; transition: all .2s var(--tp-ease-out); width: 100%; }
+.input::placeholder { color: rgba(255,255,255,.4); }
+.input:focus { border-color: var(--tp-cyan-500); box-shadow: 0 0 0 3px rgba(0,212,200,.15); }
+
+/* === Badges === */
+.badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: 9999px; font-size: 11px; font-weight: 500; }
+.badge-cyan { background: rgba(0,212,200,.15); color: var(--tp-cyan-500); border: 1px solid rgba(0,212,200,.3); }
+.badge-success { background: rgba(45,158,95,.2); color: var(--tp-success-light); }
+.badge-warning { background: rgba(245,166,35,.15); color: var(--tp-warning); }
+.badge-best { background: var(--tp-cyan-500); color: var(--tp-navy-700); padding: 3px 8px; border-radius: 4px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; font-size: 10px; }
+.badge-ai { background: var(--tp-cyan-500); color: var(--tp-navy-700); padding: 2px 6px; border-radius: 3px; font-weight: 800; font-size: 10px; letter-spacing: .05em; }
+
+/* === Plan badges === */
+.plan-free { background: rgba(113,128,150,.2); color: #A0AEC0; padding: 4px 12px; border-radius: 9999px; font-weight: 700; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; }
+.plan-premium { background: rgba(0,212,200,.15); color: var(--tp-cyan-500); padding: 4px 12px; border-radius: 9999px; font-weight: 700; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; }
+.plan-enterprise { background: rgba(245,166,35,.15); color: var(--tp-warning); padding: 4px 12px; border-radius: 9999px; font-weight: 700; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; }
+
+/* === Type helpers === */
+.t-display { font-family: var(--tp-font-display); font-weight: 700; letter-spacing: -0.02em; }
+.t-mono { font-family: var(--tp-font-mono); font-variant-numeric: tabular-nums; }
+.t-eyebrow { font-size: 12px; text-transform: uppercase; letter-spacing: .12em; color: var(--tp-cyan-500); font-weight: 500; }
+.t-label { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--tp-cyan-500); font-weight: 500; }
+.t-muted { color: rgba(255,255,255,.4); }
+.t-secondary { color: rgba(255,255,255,.7); }
+.t-accent { color: var(--tp-cyan-500); }
+.t-success { color: var(--tp-success-light); }
+
+/* Layout */
+.container { max-width: 1280px; margin: 0 auto; padding: 0 24px; }
+.app-container { max-width: 1400px; margin: 0 auto; padding: 0 32px; }
