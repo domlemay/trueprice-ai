@@ -17,6 +17,7 @@
     "dotenv-cli": "^11.0.0",
     "turbo": "^2.5.4"
   },
+  "packageManager": "npm@11.6.2",
   "engines": {
     "node": ">=18"
   }
