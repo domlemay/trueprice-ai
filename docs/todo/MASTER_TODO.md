@@ -51,29 +51,102 @@ Voir section **STRIPE** ci-dessous pour le détail.
 
 ---
 
-## PHASE 2 — Moteur de comparaison de prix ⏳
+## PHASE 2 — Géolocalisation & Logique marché ⏳
 
-- ⏳ Interface de recherche (barre de recherche + résultats)
-- ⏳ Endpoint API `/api/search` (protégé, limité par plan)
-- ⏳ Service de calcul : prix USD → vrai coût CAD
-  - Taux de change en temps réel (ex-rates API ou Fixer.io)
-  - Taxes provinciales (table statique JSON)
-  - Droits de douane CUSMA (tarif simplifié par catégorie)
-  - Frais de livraison estimés
-- ⏳ Affichage résultat — segment bar (cyan base, bleu livraison, vert taxes, ambre douanes)
-- ⏳ Vérifier les limites `PLAN_LIMITS` (`lib/auth.ts`) avant chaque recherche
-- ⏳ Sauvegarder chaque recherche dans `PriceSearch` (BD)
-- ⏳ Compteur d'utilisation mensuelle dans le dashboard
+> Crucial : l'app est internationale. Un acheteur au Canada ne peut pas acheter sur Amazon.com
+> (pas de livraison directe, droits de douane, etc.). La logique de comparaison doit être
+> adaptée au pays d'origine du user.
+
+### 2A — Détection de la localisation ⏳
+
+- [ ] **IP geolocation** au chargement — détecter pays + région (ex: ipapi.co, MaxMind GeoLite2)
+  - Stocker en cookie de session + Clerk publicMetadata si connecté
+- [ ] **Préférence manuelle** — le user peut forcer son pays dans les settings
+- [ ] **Langue/devise** — dériver la devise par défaut du pays (CAD, USD, EUR, GBP…)
+- [ ] `lib/geo.ts` — helper `getUserMarket()` retourne `{ country, currency, locale, taxRegion }`
+
+### 2B — Matrice marché par pays ⏳
+
+> Règle fondamentale : comparer UNIQUEMENT les marketplaces accessibles depuis le pays du user.
+
+| Pays user | Marketplace principale | Comparé avec | Logique douanière |
+|---|---|---|---|
+| 🇨🇦 Canada | Amazon.ca / BestBuy.ca | Amazon.com + Best Buy US | CUSMA, franchise 20 $ CAD |
+| 🇺🇸 USA | Amazon.com / Walmart.com | Amazon.ca + alternatives CA | Rare (import depuis CA) |
+| 🇫🇷 France | Amazon.fr | Amazon.com + prix CA | TVA 20%, droits UE |
+| 🇬🇧 UK | Amazon.co.uk | Amazon.com | Post-Brexit droits |
+| 🇩🇪 Allemagne | Amazon.de | Amazon.com | TVA 19%, droits UE |
+| autres | Amazon local | Amazon.com | Droits généraux |
+
+- [ ] `lib/markets.ts` — table de correspondance pays → marketplaces disponibles
+- [ ] `lib/duties.ts` — règles douanières par paire de marchés (taux, franchises, exemptions)
+- [ ] Adapter les résultats de recherche au marché détecté (ne jamais proposer une livraison impossible)
+
+### 2C — Moteur de comparaison de prix ⏳
+
+- [ ] Interface de recherche (barre de recherche + résultats)
+- [ ] Endpoint API `/api/search` (protégé, limité par plan)
+- [ ] **Pipeline de calcul** — `lib/calculator.ts`
+  - Taux de change en temps réel (ex-rates API, Open Exchange Rates, ou Fixer.io)
+  - Taxes locales selon pays + région (GST/TVQ, HST, TVA, Sales Tax US par état…)
+  - Droits de douane selon paire de marchés (`lib/duties.ts`)
+  - Frais de livraison estimés (poids volumétrique, distance, transporteur)
+  - Frais de courtage en douane (DHL, UPS, FedEx — souvent sous-estimés)
+- [ ] Affichage résultat — segment bar (cyan base, bleu livraison, vert taxes, ambre douanes)
+- [ ] Vérifier les limites `PLAN_LIMITS` avant chaque recherche
+- [ ] Sauvegarder chaque recherche dans `PriceSearch` (BD)
+- [ ] Compteur d'utilisation mensuelle dans le dashboard
 
 ---
 
-## PHASE 3 — Scraping / Enrichissement ⏳
+## PHASE 3 — Scraping / Sources de prix ⏳
 
-- ⏳ `apps/worker` — service de scraping (Playwright ou Puppeteer)
-- ⏳ Parser Amazon.ca / Amazon.com (prix, titre, catégorie)
-- ⏳ Parser Best Buy, Costco, Apple Store (Canada vs USA)
-- ⏳ Cache Redis (Upstash) — TTL 24h par URL
-- ⏳ Queue de jobs (BullMQ ou Cloudflare Queues)
+> La recherche de prix est le cœur du produit. Plusieurs approches à évaluer selon coût/fiabilité.
+
+### 3A — Méthodes d'acquisition des prix (choisir selon budget)
+
+| Méthode | Coût | Fiabilité | Complexité | Recommandation |
+|---|---|---|---|---|
+| **Amazon Product Advertising API** | Gratuit (besoin compte affilié) | ⭐⭐⭐⭐⭐ | Faible | ✅ Priorité 1 pour Amazon |
+| **Rainforest API** (Amazon proxy) | ~50 $/mois | ⭐⭐⭐⭐⭐ | Très faible | ✅ Si pas affilié |
+| **PriceAPI.com** | ~30 $/mois | ⭐⭐⭐⭐ | Très faible | ✅ Multi-source |
+| **Scraping Playwright** | Infra seulement | ⭐⭐⭐ | Élevée | ⚠️ Risque blocage |
+| **Google Shopping API** | Variable | ⭐⭐⭐⭐ | Moyenne | ✅ Pour enrichissement |
+
+### 3B — Sources par marché
+
+**Canada :**
+- [ ] Amazon.ca — API affilié ou Rainforest API
+- [ ] Best Buy Canada — JSON API publique (non documentée)
+- [ ] Costco.ca — scraping (pas d'API)
+- [ ] Apple Store Canada — API JSON structurée (stable)
+- [ ] Walmart.ca — API partenaire ou scraping
+
+**USA :**
+- [ ] Amazon.com — Amazon PA API (même compte affilié, marketplace US)
+- [ ] Best Buy US — API publique (clé gratuite)
+- [ ] Apple Store US — API JSON (même structure que CA)
+- [ ] Walmart.com — API Walmart Open (gratuite, clé requise)
+
+**Europe / autres :**
+- [ ] Amazon.fr / .de / .co.uk — Amazon PA API (marketplace EU)
+- [ ] Étendre selon la demande utilisateurs
+
+### 3C — Infrastructure scraping (`apps/worker`)
+
+- [ ] `apps/worker` — service Node.js avec Playwright
+- [ ] Cache Redis (Upstash) — TTL 6h par URL produit, TTL 1h pour taux de change
+- [ ] Queue de jobs (BullMQ ou Cloudflare Queues) — ne pas bloquer la requête HTTP
+- [ ] Fallback : si scraping échoue → retourner prix en cache + flag `stale: true`
+- [ ] Monitoring des parsers (alerte si taux d'échec > 10 %)
+
+### 3D — Inputs de recherche supportés
+
+- [ ] Nom de produit / mots-clés (recherche fuzzy)
+- [ ] Code UPC / EAN / barcode
+- [ ] URL produit (Amazon, Best Buy, Apple, etc.) → extraire ASIN ou product ID
+- [ ] Modèle exact (ex: "iPhone 16 Pro 256GB Natural Titanium")
+- [ ] ASIN Amazon (recherche directe)
 
 ---
 

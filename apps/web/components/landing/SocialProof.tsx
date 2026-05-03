@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import { Star, Users, TrendingDown, Award } from "lucide-react";
 
 const stats = [
-  { icon: <Users className="w-5 h-5 text-tp-cyan-500" />, value: "2 400+", label: "Canadiens ce mois-ci" },
+  { icon: <Users className="w-5 h-5 text-tp-cyan-500" />, value: "2 400+", label: "Acheteurs ce mois-ci" },
   { icon: <Star className="w-5 h-5 text-tp-warning" />, value: "4.9 / 5", label: "Satisfaction moyenne" },
   { icon: <TrendingDown className="w-5 h-5 text-tp-success" />, value: "340 $", label: "Économies moyennes / an" },
   { icon: <Award className="w-5 h-5 text-tp-info" />, value: "15+", label: "Boutiques comparées" },

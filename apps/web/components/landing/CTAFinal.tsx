@@ -39,7 +39,7 @@ export function CTAFinal() {
           </h2>
 
           <p className="text-white/60 text-lg mb-8 max-w-xl mx-auto">
-            Rejoignez 2 400+ Canadiens qui économisent déjà grâce à TruePriceAI.
+            Rejoignez 2 400+ acheteurs qui économisent déjà grâce à TruePriceAI.
             Essai gratuit, aucune carte requise.
           </p>
 

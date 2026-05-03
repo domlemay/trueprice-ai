@@ -46,7 +46,7 @@ export function Hero() {
           >
             <motion.div variants={itemVariants} className="mb-6">
               <span className="inline-flex items-center gap-2 bg-tp-cyan-500/10 border border-tp-cyan-500/30 text-tp-cyan-500 text-xs font-medium px-3 py-1.5 rounded-full uppercase tracking-[0.12em]">
-                <span>🍁</span><span>Fait pour les Canadiens</span>
+                <span>🌎</span><span>Comparez le vrai prix, partout</span>
               </span>
             </motion.div>
 
