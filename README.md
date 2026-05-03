@@ -24,13 +24,18 @@ Le prix affiché n'est jamais le prix final. Un produit à 299 $ USD peut reveni
 | Phase | Statut | Description |
 |---|---|---|
 | 0 — Fondations | ✅ Complet | Next.js 14, design system, monorepo Turborepo |
-| 1A — Auth | 🔄 En cours | Clerk v7, pages sign-in/sign-up, dashboard |
-| 1B — Base de données | ⏳ Prochain | Prisma + Neon, première migration |
-| 1C — Stripe | ⏳ À venir | Abonnements FREE / PREMIUM / ENTERPRISE |
-| 2 — Géolocalisation | ⏳ À venir | Détection marché, logique par pays |
-| 3 — Scraping & Prix | ⏳ À venir | Sources de prix, rabais, calcul vrai coût |
-| 4 — Export & API | ⏳ À venir | CSV, PDF, API publique |
-| 5 — IA | ⏳ À venir | Recommandations GPT-4o, alertes prix |
+| 1A — Auth | 🔄 En cours | Clerk v7, pages sign-in/sign-up, dashboard, middleware |
+| 1B — Base de données | 🔄 En cours | Schéma Prisma 40+ modèles ✅ écrit · migration Neon ⏳ |
+| 1C — Stripe | ⏳ À venir | Abonnements FREE / PREMIUM / ENTERPRISE / ENTERPRISE_PRO |
+| 1D — Organisation | ⏳ À venir | Multi-tenant, succursales, rôles, invitations (ENTERPRISE) |
+| 1E — Sécurité | ⏳ À venir | Sessions, appareils, 2FA, SSO (ENTERPRISE_PRO) |
+| 1F — RGPD / Loi 25 | ⏳ À venir | Consentements, export données, suppression |
+| 2 — Géolocalisation | ⏳ À venir | Détection marché, matrice pays × marketplaces |
+| 3 — Scraping & Prix | ⏳ À venir | Sources de prix, rabais, calcul vrai coût, fournisseurs |
+| 4 — Export & API | ⏳ À venir | CSV, PDF, API publique REST v1, clés API |
+| 5 — IA | ⏳ À venir | GPT-4o, tokens, BYOK, alertes intelligentes |
+| 6 — Support & Statut | ⏳ À venir | Tickets, changelog in-app, page de statut |
+| 7 — White-label | ⏳ À venir | Domaine custom, SSO dédié (ENTERPRISE_PRO) |
 
 ---
 
@@ -120,25 +125,36 @@ Voir `docs/design-system/README.md` pour les règles complètes.
 
 ---
 
-## Structure des données — Rabais & Promotions
+## Structure des données
 
-Chaque recherche de prix retourne des `ProductOffer` (une par marketplace). Chaque offre peut avoir plusieurs `Discount` :
+Le schéma couvre 40+ modèles et 15 enums. Structure principale :
 
 ```
-PriceSearch
-└── ProductOffer[]          (une par marketplace)
-    ├── priceOriginal       prix barré
-    ├── priceCurrent        prix après rabais automatiques
-    ├── truePriceTotal      vrai coût total (change + taxes + douanes + livraison)
-    └── Discount[]
-        ├── type            AUTOMATIC | COUPON | CONDITIONAL | MEMBERSHIP | SALE | BUNDLE | CASHBACK
-        ├── label           "Coupon 15 %" · "Membres Prime" · "Achetez-en 2, économisez 10 %"
-        ├── percentOff      15
-        ├── condition       "Abonnement Amazon Prime requis"
-        ├── code            "SAVE15" (si code promo)
-        ├── expiresAt       2026-06-15 (si connue)
-        └── isAutoApplied   true | false
+User / Organization
+└── PriceSearch               (recherche d'un produit)
+    └── ProductOffer[]        (une par marketplace ou fournisseur)
+        ├── priceOriginal     prix barré
+        ├── priceCurrent      prix actuel
+        ├── truePriceTotal    change + taxes + douanes + livraison + courtage
+        └── Discount[]
+            ├── type          AUTOMATIC | COUPON | CONDITIONAL | MEMBERSHIP | SALE | BUNDLE | CASHBACK
+            ├── label         "Coupon 15 %" · "Membres Prime" · "Achetez-en 2, économisez 10 %"
+            ├── condition     "Abonnement Amazon Prime requis"
+            ├── code          "SAVE15" (si code promo)
+            ├── expiresAt     2026-06-15 (si connue)
+            └── isAutoApplied true | false
+
+Organization (ENTERPRISE)
+├── Branch[]                  succursales (pays, province, devise)
+├── OrganizationMembership[]  users avec rôle ADMIN / MANAGER / MEMBER
+├── OrganizationSupplier[]    fournisseurs + conditions commerciales
+│   ├── SupplierCategoryDiscount[]
+│   ├── SupplierVolumeDiscount[]
+│   └── SupplierFileImport[]  catalogues / factures parsés par IA
+└── Integration[]             POS (Lightspeed, Square…) · ERP (SAP, NetSuite…) · BI
 ```
+
+Voir `packages/db/prisma/schema.prisma` pour le schéma complet.
 
 ---
 

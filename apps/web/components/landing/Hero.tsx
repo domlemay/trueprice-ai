@@ -222,18 +222,6 @@ export function Hero() {
                 </div>
               </motion.div>
 
-              {/* Floating — savings */}
-              <motion.div
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1, y: [0, 6, 0] }}
-                // @ts-ignore
-                transition={{ delay: 1.2, repeat: Infinity, duration: 3.5, ease: "easeInOut" }}
-                className="absolute -bottom-4 -left-4 bg-tp-navy-600 rounded-2xl px-4 py-3 shadow-tp-lg border border-tp-cyan-500/20"
-              >
-                <div className="text-xs text-white/60 font-medium uppercase tracking-[0.08em]">Économies ce mois</div>
-                <div className="text-lg font-mono font-bold text-tp-success">+2 340 $ CAD</div>
-                <div className="text-xs text-white/40">pour nos utilisateurs</div>
-              </motion.div>
             </div>
           </motion.div>
         </div>

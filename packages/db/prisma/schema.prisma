@@ -205,6 +205,8 @@ model User {
   supportTickets       SupportTicket[]
   aiConversations      AiConversation[]
   changelogs           ChangelogRead[]
+  preferredSites       UserPreferredSite[]
+  blockedSites         UserBlockedSite[]
 
   @@map("users")
 }
