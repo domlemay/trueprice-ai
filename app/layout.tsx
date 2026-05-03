@@ -1,5 +1,12 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
+import {
+  ClerkProvider,
+  SignInButton,
+  SignUpButton,
+  UserButton,
+  Show,
+} from "@clerk/nextjs";
 import "./globals.css";
 
 const inter = Inter({
@@ -35,7 +42,22 @@ export default function RootLayout({
 }) {
   return (
     <html lang="fr-CA" className={inter.variable}>
-      <body className={inter.className}>{children}</body>
+      <body className={inter.className}>
+        <ClerkProvider>
+          <Show when="signed-out">
+            <span className="sr-only">
+              <SignInButton />
+              <SignUpButton />
+            </span>
+          </Show>
+          <Show when="signed-in">
+            <span className="sr-only">
+              <UserButton />
+            </span>
+          </Show>
+          {children}
+        </ClerkProvider>
+      </body>
     </html>
   );
 }
