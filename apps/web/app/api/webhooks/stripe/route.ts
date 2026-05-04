@@ -3,50 +3,59 @@ import { NextResponse } from "next/server";
 import type Stripe from "stripe";
 import { stripe } from "@/lib/stripe";
 import { prisma } from "@trueprice-ai/db";
-import { upsertSubscription, cancelSubscription, recordAiTokenPurchase } from "@trueprice-ai/db";
+import {
+  upsertSubscription,
+  cancelSubscription,
+  recordAiTokenPurchase,
+  upsertOrgSubscription,
+} from "@trueprice-ai/db";
 import type { Plan, SubscriptionStatus } from "@prisma/client";
 
 export const runtime = "nodejs";
 
-// Map price_id → Plan interne
 const PRICE_TO_PLAN: Record<string, Plan> = {
-  [process.env.STRIPE_PRICE_ID_PREMIUM_MONTHLY!]:    "PREMIUM",
-  [process.env.STRIPE_PRICE_ID_PREMIUM_YEARLY!]:     "PREMIUM",
-  [process.env.STRIPE_PRICE_ID_PREMIUM_MONTHLY_USD!]:"PREMIUM",
-  [process.env.STRIPE_PRICE_ID_PREMIUM_YEARLY_USD!]: "PREMIUM",
-  [process.env.STRIPE_PRICE_ID_ENTERPRISE_MONTHLY!]: "ENTERPRISE",
-  [process.env.STRIPE_PRICE_ID_ENTERPRISE_YEARLY!]:  "ENTERPRISE",
-  [process.env.STRIPE_PRICE_ID_ENTERPRISE_MONTHLY_USD!]: "ENTERPRISE",
-  [process.env.STRIPE_PRICE_ID_ENTERPRISE_YEARLY_USD!]:  "ENTERPRISE",
+  [process.env.STRIPE_PRICE_ID_PREMIUM_MONTHLY!]:         "PREMIUM",
+  [process.env.STRIPE_PRICE_ID_PREMIUM_YEARLY!]:          "PREMIUM",
+  [process.env.STRIPE_PRICE_ID_PREMIUM_MONTHLY_USD!]:     "PREMIUM",
+  [process.env.STRIPE_PRICE_ID_PREMIUM_YEARLY_USD!]:      "PREMIUM",
+  [process.env.STRIPE_PRICE_ID_ENTERPRISE_MONTHLY!]:      "ENTERPRISE",
+  [process.env.STRIPE_PRICE_ID_ENTERPRISE_YEARLY!]:       "ENTERPRISE",
+  [process.env.STRIPE_PRICE_ID_ENTERPRISE_MONTHLY_USD!]:  "ENTERPRISE",
+  [process.env.STRIPE_PRICE_ID_ENTERPRISE_YEARLY_USD!]:   "ENTERPRISE",
 };
 
 const STATUS_MAP: Record<Stripe.Subscription.Status, SubscriptionStatus> = {
-  trialing:         "TRIALING",
-  active:           "ACTIVE",
-  past_due:         "PAST_DUE",
-  canceled:         "CANCELED",
-  unpaid:           "UNPAID",
-  incomplete:       "INCOMPLETE",
+  trialing:           "TRIALING",
+  active:             "ACTIVE",
+  past_due:           "PAST_DUE",
+  canceled:           "CANCELED",
+  unpaid:             "UNPAID",
+  incomplete:         "INCOMPLETE",
   incomplete_expired: "INCOMPLETE",
-  paused:           "PAST_DUE",
+  paused:             "PAST_DUE",
 };
 
-// Vérification signature HMAC Stripe — rejette toute requête falsifiée
 async function verifyWebhook(req: Request): Promise<Stripe.Event> {
   const secret = process.env.STRIPE_WEBHOOK_SECRET;
   if (!secret) throw new Error("STRIPE_WEBHOOK_SECRET non configuré");
 
-  const headersList = headers();
-  const signature   = headersList.get("stripe-signature");
+  const signature = headers().get("stripe-signature");
   if (!signature) throw new Error("Header stripe-signature manquant");
 
   const body = await req.text();
   return stripe.webhooks.constructEvent(body, signature, secret);
 }
 
-// Retrouver le userId interne depuis le stripeCustomerId
 async function getUserByStripeCustomer(customerId: string) {
   return prisma.user.findFirst({ where: { stripeCustomerId: customerId } });
+}
+
+async function getOrgByStripeCustomer(customerId: string) {
+  return prisma.organization.findFirst({ where: { stripeCustomerId: customerId } });
+}
+
+function isOrgSub(meta: Stripe.Metadata | null): boolean {
+  return meta?.type === "org_subscription";
 }
 
 export async function POST(req: Request) {
@@ -61,21 +70,42 @@ export async function POST(req: Request) {
   try {
     switch (event.type) {
 
-      // ─── Checkout complété → abonnement activé ──────────────────────────
+      // ─── Checkout complété ────────────────────────────────────────────────
       case "checkout.session.completed": {
         const session = event.data.object as Stripe.Checkout.Session;
         if (session.mode !== "subscription") break;
 
         const customerId     = session.customer as string;
         const subscriptionId = session.subscription as string;
+        const subscription   = await stripe.subscriptions.retrieve(subscriptionId);
+        const priceId        = subscription.items.data[0]?.price.id ?? "";
+        const item           = subscription.items.data[0];
+        const plan           = PRICE_TO_PLAN[priceId] ?? "ENTERPRISE";
 
-        const subscription = await stripe.subscriptions.retrieve(subscriptionId);
-        const priceId      = subscription.items.data[0]?.price.id ?? "";
-        const plan         = PRICE_TO_PLAN[priceId] ?? "PREMIUM";
-        const user         = await getUserByStripeCustomer(customerId);
+        // ── Organisation ──
+        if (isOrgSub(session.metadata)) {
+          const orgId = session.metadata?.orgId ?? session.client_reference_id;
+          if (!orgId) break;
+
+          await upsertOrgSubscription({
+            organizationId:       orgId,
+            stripeSubscriptionId: subscriptionId,
+            stripePriceId:        priceId,
+            stripeCustomerId:     customerId,
+            plan,
+            status:               STATUS_MAP[subscription.status] ?? "ACTIVE",
+            seatsIncluded:        item?.quantity ?? 10,
+            currentPeriodStart:   new Date((item?.current_period_start ?? Date.now() / 1000) * 1000),
+            currentPeriodEnd:     new Date((item?.current_period_end   ?? Date.now() / 1000 + 2592000) * 1000),
+            cancelAtPeriodEnd:    subscription.cancel_at_period_end,
+          });
+          break;
+        }
+
+        // ── Particulier ──
+        const user = await getUserByStripeCustomer(customerId);
         if (!user) break;
 
-        const item = subscription.items.data[0];
         await upsertSubscription({
           userId:               user.id,
           stripeSubscriptionId: subscriptionId,
@@ -95,15 +125,37 @@ export async function POST(req: Request) {
         break;
       }
 
-      // ─── Abonnement modifié (upgrade, downgrade, renouvellement) ────────
+      // ─── Abonnement modifié ────────────────────────────────────────────────
       case "customer.subscription.updated": {
-        const sub      = event.data.object as Stripe.Subscription;
-        const priceId  = sub.items.data[0]?.price.id ?? "";
-        const plan     = PRICE_TO_PLAN[priceId] ?? "PREMIUM";
-        const user     = await getUserByStripeCustomer(sub.customer as string);
+        const sub     = event.data.object as Stripe.Subscription;
+        const priceId = sub.items.data[0]?.price.id ?? "";
+        const plan    = PRICE_TO_PLAN[priceId] ?? "ENTERPRISE";
+        const subItem = sub.items.data[0];
+
+        // ── Organisation ──
+        if (isOrgSub(sub.metadata)) {
+          const org = await getOrgByStripeCustomer(sub.customer as string);
+          if (!org) break;
+
+          await upsertOrgSubscription({
+            organizationId:       org.id,
+            stripeSubscriptionId: sub.id,
+            stripePriceId:        priceId,
+            stripeCustomerId:     sub.customer as string,
+            plan,
+            status:               STATUS_MAP[sub.status] ?? "ACTIVE",
+            seatsIncluded:        subItem?.quantity ?? 10,
+            currentPeriodStart:   new Date((subItem?.current_period_start ?? Date.now() / 1000) * 1000),
+            currentPeriodEnd:     new Date((subItem?.current_period_end   ?? Date.now() / 1000 + 2592000) * 1000),
+            cancelAtPeriodEnd:    sub.cancel_at_period_end,
+          });
+          break;
+        }
+
+        // ── Particulier ──
+        const user = await getUserByStripeCustomer(sub.customer as string);
         if (!user) break;
 
-        const subItem = sub.items.data[0];
         await upsertSubscription({
           userId:               user.id,
           stripeSubscriptionId: sub.id,
@@ -120,9 +172,27 @@ export async function POST(req: Request) {
         break;
       }
 
-      // ─── Abonnement annulé → retour FREE ─────────────────────────────────
+      // ─── Abonnement annulé ────────────────────────────────────────────────
       case "customer.subscription.deleted": {
-        const sub  = event.data.object as Stripe.Subscription;
+        const sub = event.data.object as Stripe.Subscription;
+
+        // ── Organisation ──
+        if (isOrgSub(sub.metadata)) {
+          const org = await getOrgByStripeCustomer(sub.customer as string);
+          if (!org) break;
+
+          await prisma.orgSubscription.update({
+            where: { organizationId: org.id },
+            data:  { status: "CANCELED" },
+          });
+          await prisma.organization.update({
+            where: { id: org.id },
+            data:  { plan: "FREE" },
+          });
+          break;
+        }
+
+        // ── Particulier ──
         const user = await getUserByStripeCustomer(sub.customer as string);
         if (!user) break;
 
@@ -135,10 +205,10 @@ export async function POST(req: Request) {
         break;
       }
 
-      // ─── Facture payée → confirmer renouvellement ────────────────────────
+      // ─── Facture payée ────────────────────────────────────────────────────
       case "invoice.paid": {
         const invoice = event.data.object as Stripe.Invoice;
-        if (invoice.billing_reason === "subscription_create") break; // Déjà géré par checkout.completed
+        if (invoice.billing_reason === "subscription_create") break;
 
         const user = await getUserByStripeCustomer(invoice.customer as string);
         if (!user) break;
@@ -154,13 +224,12 @@ export async function POST(req: Request) {
         break;
       }
 
-      // ─── Paiement échoué → notifier l'utilisateur ───────────────────────
+      // ─── Paiement échoué ─────────────────────────────────────────────────
       case "invoice.payment_failed": {
         const invoice = event.data.object as Stripe.Invoice;
         const user    = await getUserByStripeCustomer(invoice.customer as string);
         if (!user) break;
 
-        // Log — l'envoi email sera déclenché par un job ou une notification in-app
         await prisma.usageLog.create({
           data: {
             userId:   user.id,
@@ -172,7 +241,7 @@ export async function POST(req: Request) {
         break;
       }
 
-      // ─── Action requise (3D Secure) ───────────────────────────────────────
+      // ─── 3D Secure requis ────────────────────────────────────────────────
       case "invoice.payment_action_required": {
         const invoice = event.data.object as Stripe.Invoice;
         const user    = await getUserByStripeCustomer(invoice.customer as string);
@@ -185,13 +254,12 @@ export async function POST(req: Request) {
         break;
       }
 
-      // ─── Fin d'essai imminente (3 jours avant) ───────────────────────────
+      // ─── Fin essai imminente ─────────────────────────────────────────────
       case "customer.subscription.trial_will_end": {
         const sub  = event.data.object as Stripe.Subscription;
         const user = await getUserByStripeCustomer(sub.customer as string);
         if (!user) break;
 
-        // Log — email envoyé par le service notification (Phase 6)
         await prisma.usageLog.create({
           data: {
             userId:   user.id,
@@ -203,11 +271,9 @@ export async function POST(req: Request) {
         break;
       }
 
-      // ─── Paiement unique réussi (tokens IA à la carte) ──────────────────
+      // ─── Tokens IA à la carte ─────────────────────────────────────────────
       case "payment_intent.succeeded": {
         const pi = event.data.object as Stripe.PaymentIntent;
-
-        // Uniquement pour les achats de tokens (metadata.type === "ai_tokens")
         if (pi.metadata?.type !== "ai_tokens") break;
 
         const user = await getUserByStripeCustomer(pi.customer as string);
