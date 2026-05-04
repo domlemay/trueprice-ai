@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useTransition, useEffect, useRef } from "react";
-import { Search, Loader2, History, ArrowRight, TrendingUp, Package, Wrench } from "lucide-react";
+import { Search, Loader2, History, ArrowRight, TrendingUp, Wrench } from "lucide-react";
 
-const SCRAPERS_READY = false; // passer à true en Phase 3 quand les scrapers sont opérationnels
+const SCRAPERS_READY = true; // Best Buy CA actif (Phase 3A)
 
 type RecentSearch = {
   id: string;
