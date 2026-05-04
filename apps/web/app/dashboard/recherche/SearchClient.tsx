@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useTransition, useEffect, useRef } from "react";
-import { Search, Loader2, History, ArrowRight, TrendingUp, Package } from "lucide-react";
+import { Search, Loader2, History, ArrowRight, TrendingUp, Package, Wrench } from "lucide-react";
+
+const SCRAPERS_READY = false; // passer à true en Phase 3 quand les scrapers sont opérationnels
 
 type RecentSearch = {
   id: string;
@@ -126,6 +128,19 @@ export function SearchClient({
         </p>
       </div>
 
+      {/* Banner développement */}
+      {!SCRAPERS_READY && (
+        <div className="mb-6 flex items-start gap-3 px-4 py-3.5 rounded-xl border border-amber-500/25 bg-amber-500/8">
+          <Wrench size={16} className="text-amber-400 shrink-0 mt-0.5" strokeWidth={1.75} />
+          <div>
+            <p className="text-amber-400 text-sm font-medium">Fonctionnalité en cours de déploiement</p>
+            <p className="text-amber-400/70 text-xs mt-0.5">
+              Le moteur de comparaison de prix sera disponible très prochainement. Vous pouvez déjà soumettre des requêtes — elles seront traitées dès l'activation des sources de données.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Barre de quota */}
       {searchLimit > 0 && (
         <div className="mb-6 px-4 py-3 rounded-xl border border-tp-cyan-500/15 bg-tp-navy-card">
@@ -179,8 +194,8 @@ export function SearchClient({
         </div>
       )}
 
-      {/* Résultats en attente */}
-      {(pending || polling) && !result && (
+      {/* Résultats en attente — seulement si les scrapers sont actifs */}
+      {(pending || polling) && !result && SCRAPERS_READY && (
         <div className="rounded-xl border border-tp-cyan-500/15 bg-tp-navy-card p-10 text-center">
           <Loader2 size={32} className="text-tp-cyan-500 mx-auto mb-3 animate-spin" />
           <p className="text-white font-medium mb-1">Analyse en cours…</p>
@@ -188,18 +203,20 @@ export function SearchClient({
         </div>
       )}
 
-      {/* Résultats */}
-      {result?.status === "completed" && result.search.offers.length > 0 && (
-        <SearchResults offers={result.search.offers} aiSummary={result.search.aiSummary} />
+      {/* Confirmation soumission (scrapers non actifs) */}
+      {result && !SCRAPERS_READY && (
+        <div className="rounded-xl border border-tp-cyan-500/15 bg-tp-navy-card p-8 text-center">
+          <Search size={32} className="text-tp-cyan-500/50 mx-auto mb-3" strokeWidth={1.5} />
+          <p className="text-white font-medium mb-1">Requête enregistrée</p>
+          <p className="text-slate-500 text-sm max-w-sm mx-auto">
+            Votre recherche a été sauvegardée. Les résultats seront disponibles dès l'activation du moteur de comparaison.
+          </p>
+        </div>
       )}
 
-      {/* Message aucun résultat */}
-      {result?.status === "completed" && result.search.offers.length === 0 && (
-        <div className="rounded-xl border border-tp-cyan-500/15 bg-tp-navy-card p-10 text-center">
-          <Package size={36} className="text-slate-600 mx-auto mb-3" strokeWidth={1.5} />
-          <p className="text-slate-400 text-sm">Aucune offre trouvée pour cette recherche.</p>
-          <p className="text-slate-600 text-xs mt-1">Le moteur de scraping est en cours de déploiement (Phase 3).</p>
-        </div>
+      {/* Résultats */}
+      {result?.status === "completed" && result.search.offers.length > 0 && SCRAPERS_READY && (
+        <SearchResults offers={result.search.offers} aiSummary={result.search.aiSummary} />
       )}
 
       {/* Historique récent */}

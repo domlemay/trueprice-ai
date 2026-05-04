@@ -57,11 +57,15 @@ export async function POST(req: NextRequest) {
 
   await incrementSearchCount(user.id);
 
-  // Déclencher le job de scraping de manière asynchrone
-  await inngest.send({
-    name: "scrape/price-search",
-    data: { searchId: search.id, query, geo },
-  });
+  // Déclencher le job de scraping — optionnel si Inngest n'est pas encore configuré
+  try {
+    await inngest.send({
+      name: "scrape/price-search",
+      data: { searchId: search.id, query, geo },
+    });
+  } catch {
+    // Inngest non configuré en dev — la recherche est créée, les résultats arriveront en Phase 3
+  }
 
   return NextResponse.json({ searchId: search.id, deduplicated: false }, { status: 201 });
 }

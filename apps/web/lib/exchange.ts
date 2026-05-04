@@ -8,8 +8,12 @@ export async function getExchangeRate(from: string, to: string): Promise<number>
 
   const cacheKey = `exchange:${from}:${to}`;
 
-  const cached = await redis.get<number>(cacheKey);
-  if (cached !== null) return cached;
+  try {
+    const cached = await redis.get<number>(cacheKey);
+    if (cached !== null) return cached;
+  } catch {
+    // Redis non configuré — continuer sans cache
+  }
 
   const res = await fetch(`${FRANKFURTER}/latest?from=${from}&to=${to}`, {
     next: { revalidate: 0 },
@@ -21,7 +25,11 @@ export async function getExchangeRate(from: string, to: string): Promise<number>
   if (!rate) throw new Error(`Taux introuvable : ${from}/${to}`);
 
   // TTL 24h — les données ECB sont mises à jour une fois par jour ouvrable
-  await redis.setex(cacheKey, 86_400, rate);
+  try {
+    await redis.setex(cacheKey, 86_400, rate);
+  } catch {
+    // Redis non configuré — on continue sans mise en cache
+  }
 
   const validUntil = new Date(Date.now() + 86_400 * 1_000);
   await prisma.exchangeRate.upsert({
