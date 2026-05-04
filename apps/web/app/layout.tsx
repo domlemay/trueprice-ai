@@ -1,18 +1,7 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
-import {
-  ClerkProvider,
-  SignInButton,
-  SignUpButton,
-  UserButton,
-  Show,
-} from "@clerk/nextjs";
+import { ClerkProvider } from "@clerk/nextjs";
+import { ThemeProvider } from "@/components/ThemeProvider";
 import "./globals.css";
-
-const inter = Inter({
-  subsets: ["latin"],
-  variable: "--font-inter",
-});
 
 export const metadata: Metadata = {
   title: "TruePriceAI — Comparez les vrais coûts. Trouvez le meilleur prix.",
@@ -43,21 +32,17 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="fr-CA" className={inter.variable}>
-      <body className={inter.className}>
+    <html lang="fr-CA" suppressHydrationWarning>
+      <body>
         <ClerkProvider afterSignOutUrl="/" signInUrl="/sign-in" signUpUrl="/sign-up">
-          <Show when="signed-out">
-            <span className="sr-only">
-              <SignInButton />
-              <SignUpButton />
-            </span>
-          </Show>
-          <Show when="signed-in">
-            <span className="sr-only">
-              <UserButton />
-            </span>
-          </Show>
-          {children}
+          <ThemeProvider
+            attribute="class"
+            defaultTheme="dark"
+            enableSystem={false}
+            disableTransitionOnChange
+          >
+            {children}
+          </ThemeProvider>
         </ClerkProvider>
       </body>
     </html>

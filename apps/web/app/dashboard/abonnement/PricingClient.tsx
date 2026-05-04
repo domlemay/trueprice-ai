@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useTransition } from "react";
 import { useSearchParams } from "next/navigation";
+import Link from "next/link";
 import {
   CheckCircle2,
   XCircle,
@@ -10,6 +11,9 @@ import {
   CreditCard,
   ExternalLink,
   Loader2,
+  User,
+  Crown,
+  ArrowRight,
 } from "lucide-react";
 
 type BillingCycle = "monthly" | "yearly";
@@ -26,7 +30,30 @@ type PriceIds = {
   enterpriseYearlyUSD: string;
 };
 
-type Props = { priceIds: PriceIds };
+type PersonalPlan = {
+  plan:          string;
+  planExpiresAt: string | null;
+  isTrialing:    boolean;
+  trialEndsAt:   string | null;
+};
+
+type OrgPlan = {
+  orgId:         string;
+  orgName:       string;
+  orgLogoUrl:    string | null;
+  plan:          string;
+  planExpiresAt: string | null;
+  isTrialing:    boolean;
+  trialEndsAt:   string | null;
+  role:          string;
+  maxSeats:      number;
+};
+
+type Props = {
+  priceIds:     PriceIds;
+  personalPlan: PersonalPlan;
+  orgPlans:     OrgPlan[];
+};
 
 const PLAN_FEATURES: Record<"PREMIUM" | "ENTERPRISE", string[]> = {
   PREMIUM: [
@@ -53,7 +80,14 @@ const PLAN_FEATURES: Record<"PREMIUM" | "ENTERPRISE", string[]> = {
   ],
 };
 
-export function PricingClient({ priceIds }: Props) {
+const PLAN_BADGE: Record<string, { label: string; color: string }> = {
+  FREE:           { label: "FREE",       color: "text-slate-400 border-slate-600/40 bg-slate-500/5" },
+  PREMIUM:        { label: "PREMIUM",    color: "text-tp-cyan-500 border-tp-cyan-500/40 bg-tp-cyan-500/5" },
+  ENTERPRISE:     { label: "ENTREPRISE", color: "text-amber-400 border-amber-400/40 bg-amber-400/5" },
+  ENTERPRISE_PRO: { label: "ENT. PRO",   color: "text-purple-400 border-purple-400/40 bg-purple-400/5" },
+};
+
+export function PricingClient({ priceIds, personalPlan, orgPlans }: Props) {
   const searchParams = useSearchParams();
   const [cycle, setCycle] = useState<BillingCycle>("monthly");
   const [currency] = useState<Currency>("CAD");
@@ -148,8 +182,110 @@ export function PricingClient({ priceIds }: Props) {
       <div className="mb-8">
         <h1 className="font-display text-3xl font-bold text-white mb-2">Abonnement</h1>
         <p className="text-slate-400 text-sm">
-          Choisissez le plan qui correspond à vos besoins. Essai gratuit 14 jours inclus.
+          Gérez vos plans personnels et d'organisation depuis un seul endroit.
         </p>
+      </div>
+
+      {/* ── Plans actifs ──────────────────────────────────── */}
+      <div className="mb-10 space-y-4">
+        <h2 className="text-white font-semibold text-sm uppercase tracking-wider opacity-60">Plans actifs</h2>
+
+        {/* Plan personnel */}
+        <div className="flex items-center justify-between px-5 py-4 rounded-xl border border-tp-cyan-500/15 bg-tp-navy-card">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-lg bg-tp-cyan-500/10 border border-tp-cyan-500/15 flex items-center justify-center shrink-0">
+              <User size={16} className="text-tp-cyan-500" strokeWidth={1.75} />
+            </div>
+            <div>
+              <p className="text-sm text-white font-medium">Compte personnel</p>
+              <p className="text-xs text-slate-500">
+                {personalPlan.isTrialing && personalPlan.trialEndsAt
+                  ? `Essai jusqu'au ${new Date(personalPlan.trialEndsAt).toLocaleDateString("fr-CA")}`
+                  : personalPlan.planExpiresAt
+                    ? `Expire le ${new Date(personalPlan.planExpiresAt).toLocaleDateString("fr-CA")}`
+                    : "Plan actif"
+                }
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className={`text-xs font-bold uppercase tracking-widest px-2.5 py-1 rounded-full border ${PLAN_BADGE[personalPlan.plan]?.color ?? PLAN_BADGE.FREE.color}`}>
+              {PLAN_BADGE[personalPlan.plan]?.label ?? personalPlan.plan}
+            </span>
+            {personalPlan.plan === "FREE" && (
+              <a href="#upgrade" className="text-xs text-tp-cyan-500 hover:underline flex items-center gap-1">
+                Passer à Premium <ArrowRight size={11} />
+              </a>
+            )}
+          </div>
+        </div>
+
+        {/* Plans organisations */}
+        {orgPlans.map((org) => {
+          const badge = PLAN_BADGE[org.plan] ?? PLAN_BADGE.ENTERPRISE;
+          return (
+            <div key={org.orgId} className="flex items-center justify-between px-5 py-4 rounded-xl border border-tp-cyan-500/15 bg-tp-navy-card">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-lg bg-amber-500/10 border border-amber-500/15 flex items-center justify-center shrink-0 overflow-hidden">
+                  {org.orgLogoUrl
+                    ? <img src={org.orgLogoUrl} alt="" className="w-full h-full object-cover" />
+                    : <Building2 size={16} className="text-amber-400" strokeWidth={1.75} />
+                  }
+                </div>
+                <div>
+                  <p className="text-sm text-white font-medium">{org.orgName}</p>
+                  <p className="text-xs text-slate-500">
+                    {org.role} · {org.maxSeats} sièges
+                    {org.isTrialing && org.trialEndsAt
+                      ? ` · Essai jusqu'au ${new Date(org.trialEndsAt).toLocaleDateString("fr-CA")}`
+                      : ""
+                    }
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className={`text-xs font-bold uppercase tracking-widest px-2.5 py-1 rounded-full border ${badge.color}`}>
+                  {badge.label}
+                </span>
+                <Link
+                  href={`/dashboard/organisation/${org.orgId}/facturation`}
+                  className="text-xs text-slate-400 hover:text-tp-cyan-500 transition-colors flex items-center gap-1"
+                >
+                  Gérer <ExternalLink size={11} />
+                </Link>
+              </div>
+            </div>
+          );
+        })}
+
+        {/* CTA créer une org */}
+        {orgPlans.length === 0 && (
+          <div className="flex items-center justify-between px-5 py-4 rounded-xl border border-dashed border-tp-cyan-500/15 bg-tp-navy-card/50">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-lg border border-dashed border-tp-cyan-500/20 flex items-center justify-center shrink-0">
+                <Building2 size={16} className="text-slate-600" strokeWidth={1.75} />
+              </div>
+              <div>
+                <p className="text-sm text-slate-400">Pas encore d'organisation</p>
+                <p className="text-xs text-slate-600">Pour les équipes, PME et entreprises</p>
+              </div>
+            </div>
+            <Link
+              href="/dashboard/organisation"
+              className="text-xs text-tp-cyan-500 hover:underline flex items-center gap-1"
+            >
+              <Crown size={11} />
+              Créer une organisation
+            </Link>
+          </div>
+        )}
+      </div>
+
+      {/* ── Changer de plan personnel ──────────────────────── */}
+      <div id="upgrade" className="mb-6">
+        <h2 className="text-white font-semibold text-sm uppercase tracking-wider opacity-60 mb-4">
+          Changer de plan personnel
+        </h2>
       </div>
 
       {/* Toggle cycle */}
