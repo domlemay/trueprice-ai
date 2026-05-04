@@ -34,7 +34,7 @@ export default async function DashboardLayout({
             </Link>
           </nav>
 
-          <UserButton afterSignOutUrl="/" />
+          <UserButton />
         </div>
       </header>
 

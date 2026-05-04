@@ -7,10 +7,16 @@ export const prisma =
   new PrismaClient({
     log:
       process.env.NODE_ENV === "development"
-        ? ["query", "error", "warn"]
+        ? ["error", "warn"]
         : ["error"],
   });
 
 if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
 
+// Re-export all Prisma types
 export * from "@prisma/client";
+
+// Query helpers
+export * from "./queries/users";
+export * from "./queries/organizations";
+export * from "./queries/subscriptions";
