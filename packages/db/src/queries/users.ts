@@ -115,6 +115,73 @@ export async function incrementSearchCount(userId: string): Promise<void> {
   });
 }
 
+export async function completeOnboarding(
+  userId: string,
+  data: {
+    preferredCurrency: string;
+    preferredLocale: string;
+    timezone: string;
+    address?: {
+      street: string;
+      city: string;
+      province: string;
+      postalCode: string;
+      country: string;
+    };
+    notificationUpdates: { type: string; channel: string; enabled: boolean }[];
+    consents: { type: "ANALYTICS" | "MARKETING"; granted: boolean; version: string; ipAddress?: string | null }[];
+  }
+): Promise<void> {
+  await prisma.$transaction(async (tx) => {
+    // Mise à jour préférences utilisateur + marquage onboarding terminé
+    await tx.user.update({
+      where: { id: userId },
+      data: {
+        preferredCurrency:    data.preferredCurrency,
+        preferredLocale:      data.preferredLocale,
+        timezone:             data.timezone,
+        onboardingStep:       5,
+        onboardingCompletedAt: new Date(),
+      },
+    });
+
+    // Adresse principale (optionnelle)
+    if (data.address) {
+      await tx.userAddress.create({
+        data: {
+          userId,
+          label:      "Domicile",
+          isDefault:  true,
+          street:     data.address.street,
+          city:       data.address.city,
+          province:   data.address.province,
+          postalCode: data.address.postalCode,
+          country:    data.address.country,
+        },
+      });
+    }
+
+    // Mise à jour préférences de notification (upsert)
+    for (const pref of data.notificationUpdates) {
+      await tx.notificationPreference.updateMany({
+        where: { userId, type: pref.type, channel: pref.channel as "EMAIL" | "IN_APP" },
+        data:  { enabled: pref.enabled },
+      });
+    }
+
+    // Consentements (toujours insérés, jamais mis à jour — audit trail)
+    await tx.consentLog.createMany({
+      data: data.consents.map((c) => ({
+        userId,
+        type:      c.type,
+        granted:   c.granted,
+        version:   c.version,
+        ipAddress: c.ipAddress ?? null,
+      })),
+    });
+  });
+}
+
 export async function consumeAiTokens(userId: string, amount: number): Promise<void> {
   await prisma.$transaction(async (tx) => {
     const user = await tx.user.findUniqueOrThrow({ where: { id: userId } });

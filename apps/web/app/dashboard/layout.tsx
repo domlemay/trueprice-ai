@@ -2,6 +2,7 @@ import { auth } from "@clerk/nextjs/server";
 import { UserButton } from "@clerk/nextjs";
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import { prisma } from "@trueprice-ai/db";
 
 export default async function DashboardLayout({
   children,
@@ -10,6 +11,13 @@ export default async function DashboardLayout({
 }) {
   const { userId } = await auth();
   if (!userId) redirect("/sign-in");
+
+  // Rediriger vers l'onboarding si non complété
+  const user = await prisma.user.findUnique({
+    where: { clerkId: userId },
+    select: { onboardingCompletedAt: true },
+  });
+  if (user && !user.onboardingCompletedAt) redirect("/onboarding");
 
   return (
     <div className="min-h-screen bg-tp-navy-700 text-white">
