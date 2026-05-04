@@ -38,6 +38,9 @@ export default async function DashboardLayout({
             <Link href="/dashboard" className="px-3 py-1.5 rounded-lg hover:text-white hover:bg-white/5 transition-colors">
               Tableau de bord
             </Link>
+            <Link href="/dashboard/recherche" className="px-3 py-1.5 rounded-lg hover:text-white hover:bg-white/5 transition-colors">
+              Recherche
+            </Link>
             <Link href="/dashboard/abonnement" className="px-3 py-1.5 rounded-lg hover:text-white hover:bg-white/5 transition-colors">
               Abonnement
             </Link>

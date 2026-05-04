@@ -20,3 +20,4 @@ export * from "@prisma/client";
 export * from "./queries/users";
 export * from "./queries/organizations";
 export * from "./queries/subscriptions";
+export * from "./queries/searches";

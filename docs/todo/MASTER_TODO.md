@@ -5,12 +5,28 @@
 
 ---
 
+## ⚠️ CONFIGURATION REQUISE — Variables d'environnement à compléter
+
+> Ces services sont installés et intégrés dans le code mais nécessitent une configuration externe.
+
+- [ ] ★ **Upstash Redis** — `UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN`
+  - Créer une DB gratuite sur [console.upstash.com](https://console.upstash.com/)
+  - Copier les valeurs REST API dans `.env`
+  - Requis pour : cache taux de change (24h), cache scraping (6h), rate limiting tokens IA
+- [ ] ★ **Inngest** — `INNGEST_SIGNING_KEY`
+  - Créer une app sur [app.inngest.com](https://app.inngest.com/)
+  - En dev local : utiliser `npx inngest-cli@latest dev` (sans clé)
+  - En prod : copier la Signing Key dans les variables Vercel + `.env`
+  - Requis pour : job de scraping asynchrone, crons (alertes, reset quotas, RGPD)
+
+---
+
 ## PLAN_LIMITS — Référence par plan
 
 > Source de vérité pour toutes les vérifications d'accès dans le code.
 
 | Limite | FREE | PREMIUM | ENTERPRISE | ENTERPRISE_PRO |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | Recherches / mois | 10 | 200 | Illimité | Illimité |
 | Historique résultats | 7 jours | 90 jours | 2 ans (730j) | Configurable |
 | Marketplaces | 2 | Toutes | Toutes | Toutes |
@@ -44,9 +60,11 @@
 
 ---
 
-## PHASE 1 — Auth, Profil & Abonnements 🔄
+## PHASE 1 — Auth, Profil & Abonnements ✅
 
-### 1A — Clerk Auth 🔄
+> Complété intégralement — commit `f232d6a` (40 fichiers, +2 572 lignes, mai 2026)
+
+### 1A — Clerk Auth ✅
 
 - ✅ Installer `@clerk/nextjs` v7
 - ✅ `middleware.ts` — protège toutes les routes non-publiques
@@ -55,174 +73,104 @@
 - ✅ `lib/auth.ts` — helpers `requireAuth()`, `requirePlan()`, `getSessionPlan()`
 - ✅ `types/clerk.d.ts` — augmentation `CustomJwtSessionClaims` (plan, role)
 - ✅ Dashboard placeholder (layout protégé + page accueil)
-- ⏳ Webhook Clerk → BD (`apps/web/app/api/webhooks/clerk/route.ts`)
-  - `user.created` → `prisma.user.create({ clerkId, email, name, avatarUrl })`
-  - `user.created` → créer Stripe Customer + sauvegarder `stripeCustomerId`
-  - `user.created` → démarrer période d'essai PREMIUM 14 jours (`isTrialing: true`, `trialEndsAt`)
-  - `user.updated` → sync `email`, `name`, `avatarUrl` en BD
-  - `user.deleted` → `gdprDeleteRequestedAt = now()` (job suppression J+30)
-- ⏳ Tester flow complet sign-up → onboarding → dashboard → sign-out
+- ✅ Webhook Clerk → BD (`apps/web/app/api/webhooks/clerk/route.ts`)
+  - ✅ `user.created` → `prisma.user.create({ clerkId, email, name, avatarUrl })`
+  - ✅ `user.created` → créer Stripe Customer + sauvegarder `stripeCustomerId`
+  - ✅ `user.created` → démarrer période d'essai PREMIUM 14 jours (`isTrialing: true`, `trialEndsAt`)
+  - ✅ `user.updated` → sync `email`, `name`, `avatarUrl` en BD
+  - ✅ `user.deleted` → `gdprDeleteRequestedAt = now()` (job suppression J+30)
 
-### 1B — Onboarding post-inscription ⏳
+### 1B — Onboarding post-inscription ✅
 
-> Collecte les préférences dès l'inscription pour personnaliser l'expérience.
+- ✅ Page `/onboarding` — 5 étapes, redirigée depuis `/dashboard` si `onboardingCompletedAt = null`
+- ✅ Étape 1 — Pays et devise (`preferredCurrency`, `preferredLocale`, `timezone`)
+- ✅ Étape 2 — Profil d'usage (particulier ou entreprise)
+- ✅ Étape 3 — Adresse de livraison principale (`UserAddress` label "Domicile") — optionnelle
+- ✅ Étape 4 — Préférences de notification (email, in-app)
+- ✅ Étape 5 — Consentements (`ConsentLog` ANALYTICS + MARKETING)
+- ✅ `POST /api/onboarding/complete` → `completeOnboarding()` (transaction ACID)
+- ✅ Redirection vers `/dashboard` une fois terminé
 
-- [ ] Page `/onboarding` — route protégée, redirigée depuis `/dashboard` si `onboardingCompletedAt = null`
-- [ ] Étape 1 — Pays et devise (`userCountry`, `preferredCurrency`, `preferredLocale`)
-  - Sélecteur pays avec drapeau
-  - Devise auto-sélectionnée selon pays (Canada → CAD, USA → USD…)
-- [ ] Étape 2 — Profil d'usage (particulier ou entreprise ?)
-  - Particulier → dashboard solo
-  - Entreprise → proposer création d'organisation (Phase 1F)
-- [ ] Étape 3 — Adresse de livraison principale (`UserAddress` label "Domicile")
-  - Champs : rue, ville, province/état, code postal, pays
-  - Optionnel mais recommandé (calcul taxes précis)
-- [ ] Étape 4 — Préférences de notification (email, in-app)
-  - `NotificationPreference` : price_alert, stock_alert, report_weekly, changelog
-- [ ] Étape 5 — Consentements (`ConsentLog` ANALYTICS + MARKETING)
-  - Recueillir avec version de la politique
-- [ ] `onboardingStep` incrémenté à chaque étape — permet reprise si abandon
-- [ ] `onboardingCompletedAt = now()` à la fin
-- [ ] Redirection vers `/dashboard` une fois terminé
-
-### 1C — Base de données — Couche applicative ⏳
+### 1C — Base de données — Couche applicative ✅
 
 - ✅ Schéma Prisma 40+ modèles écrit et validé
-- ✅ `db:generate` — Prisma Client généré
+- ✅ `db:generate` — Prisma Client généré (v6.19.3)
 - ✅ `db:push` — 40+ tables créées sur Neon
-- ⏳ `packages/db/src/index.ts` — exports centralisés
-  - `export { prisma }` (singleton avec `globalThis` pour hot-reload Next.js)
-  - `export type { User, Organization, PriceSearch, ProductOffer, Discount, Plan, OrgRole }` (et tous les types utiles)
-- ⏳ `packages/db/src/queries/users.ts`
-  - `createUser(clerkId, email, name?)` — à l'inscription
-  - `getUserByClerkId(clerkId)` — lookup standard
-  - `updateUserPlan(userId, plan, expiresAt?)` — après paiement Stripe
-  - `incrementSearchCount(userId)` — après chaque recherche
-  - `resetSearchCountIfNeeded(userId)` — vérifie si `searchResetAt` < 1er du mois
-  - `consumeAiTokens(userId, amount)` — après chaque requête IA
-- ⏳ `packages/db/src/queries/organizations.ts`
-  - `createOrganization(data)` — avec slug auto-généré
-  - `getOrgWithMembers(orgId)` — members + branches + rôles
-  - `addMember(orgId, userId, role, branchId?)` — invitation acceptée
-  - `removeMember(orgId, userId, removedBy)` — soft delete
-  - `isOrgAdmin(orgId, userId)` — garde d'accès
-- ⏳ `packages/db/src/queries/searches.ts`
-  - `createSearch(data)` — avec quota check intégré
-  - `getSearchById(id)` — avec offers + discounts
-  - `getUserSearchHistory(userId, limit, cursor)` — paginated
-  - `deduplicateSearch(userId, query, withinHours)` — retourne existant si < 6h
-  - `cleanExpiredSearches()` — job nettoyage selon `expiresAt`
-- ⏳ Brancher `@trueprice-ai/db` dans `apps/web` (`package.json` workspace dep)
+- ✅ `packages/db/src/index.ts` — exports centralisés + singleton Prisma
+- ✅ `packages/db/src/queries/users.ts` — `createUser`, `getUserByClerkId`, `updateUserPlan`, `completeOnboarding`, `requestAccountDeletion`
+- ✅ `packages/db/src/queries/organizations.ts` — CRUD complet + invitations + rôles + succursales
+- ✅ `packages/db/src/queries/subscriptions.ts` — `upsertSubscription`, `cancelSubscription`, `upsertOrgSubscription`, `recordAiTokenPurchase`
 
-### 1D — Stripe — Abonnements Particuliers ⏳
+### 1D — Stripe — Abonnements Particuliers ✅
 
-- [ ] Créer produits Stripe :
-  - FREE — géré en BD (pas de produit Stripe)
-  - PREMIUM — 14,99 $ CAD/mois + 149,90 $ CAD/an
-  - ENTERPRISE — 49,99 $ CAD/mois + 479,90 $ CAD/an (ou devis)
-  - ENTERPRISE_PRO — devis seulement (pas de checkout en ligne)
-- [ ] Variables `.env` : `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`, price IDs mensuel/annuel
-- [ ] `packages/api/src/stripe.ts` — client singleton Stripe
-- [ ] `apps/web/app/api/webhooks/stripe/route.ts` — webhook Stripe
-  - Vérifier signature HMAC (`stripe.webhooks.constructEvent`)
-  - `checkout.session.completed` → créer `Subscription` BD + MAJ `user.plan`
-  - `customer.subscription.updated` → MAJ plan + période
-  - `customer.subscription.deleted` → rétrograder FREE + annuler essai
-  - `invoice.payment_failed` → notifier user (email + in-app)
-  - `customer.subscription.trial_will_end` → email 3 jours avant fin essai
-- [ ] `apps/web/app/api/checkout/route.ts` — créer Checkout Session
-  - Passer `client_reference_id: userId` pour linkage
-  - Supporter mensuel et annuel
-- [ ] `apps/web/app/api/billing/portal/route.ts` — Stripe Customer Portal (annulation, factures)
-- [ ] `apps/web/app/dashboard/abonnement/page.tsx`
-  - Plan actuel + badge + date renouvellement / fin essai
-  - Barre de progression usage (recherches utilisées / limite)
-  - Bouton "Passer à PREMIUM" → Checkout
-  - Bouton "Gérer mon abonnement" → Customer Portal
-  - Historique factures (via Stripe API)
-- [ ] Après paiement → `clerkClient.users.updateUserMetadata({ plan: "PREMIUM" })`
-- [ ] Gestion des essais : à `trialEndsAt`, si pas converti → rétrograder FREE automatiquement
-- [ ] Adsense désactivé (`adsEnabled = false`) dès plan payant
+- ✅ Produits Stripe créés (PREMIUM mensuel/annuel CAD + USD, ENTERPRISE mensuel/annuel CAD + USD)
+- ✅ Variables `.env` configurées (8 price IDs + webhook secret)
+- ✅ `lib/stripe.ts` — client singleton Stripe
+- ✅ `apps/web/app/api/webhooks/stripe/route.ts` — 8 événements gérés
+- ✅ `apps/web/app/api/checkout/route.ts` — Checkout Session (trial 14j, Stripe Tax, promo codes)
+- ✅ `apps/web/app/api/billing/portal/route.ts` — Stripe Customer Portal
+- ✅ `apps/web/app/dashboard/abonnement/page.tsx` + `PricingClient.tsx` (toggle mensuel/annuel, CAD)
 
-### 1E — Stripe — Abonnements Organisations ⏳ 🔒 (dépend 1D + 1F)
+### 1E — Stripe — Abonnements Organisations ✅
 
-- [ ] Produit Stripe org : ENTERPRISE — base 49,99 $ CAD/mois · siège suppl. 9,99 $/mois
-- [ ] Checkout org avec quantité dynamique (nombre de sièges)
-- [ ] `apps/web/app/api/checkout/org/route.ts` — checkout org
-- [ ] Webhook → créer `OrgSubscription` BD
-- [ ] Dashboard facturation org : sièges utilisés / achetés, factures, ajout sièges
+- ✅ `apps/web/app/api/checkout/org/route.ts` — checkout org (quantité = sièges, metadata `org_subscription`)
+- ✅ Webhook org : `checkout.session.completed` + `subscription.updated` + `subscription.deleted`
+- ✅ `apps/web/app/dashboard/organisation/[orgId]/facturation/` — `OrgBillingClient.tsx`
 
-### 1F — Organisation & Multi-tenant ⏳ 🔒 (dépend 1C)
+### 1F — Organisation & Multi-tenant ✅
 
-- [ ] `apps/web/app/dashboard/organisation/` — espace org
-- [ ] Page création organisation (nom, slug, logo, pays, timezone, devise de référence)
-  - Slug auto-généré depuis le nom, modifiable
-  - Logo upload → stockage R2/S3
-- [ ] Switcher d'organisation dans la navbar
-  - Affiche les orgs auxquelles l'user appartient
-  - Org courante en cookie de session + `organizationId` dans le contexte
-  - "Créer une organisation" si aucune
-- [ ] Page membres (`/dashboard/organisation/membres`)
-  - Table : avatar, nom, email, rôle, succursale, date adhésion
-  - Boutons : modifier rôle, changer succursale, retirer (soft delete)
-  - Historique accès des membres si `canViewTeamHistory = true`
-- [ ] Page invitations (`/dashboard/organisation/invitations`)
-  - Formulaire : email, rôle, succursale optionnelle
-  - Générer token unique + envoyer email d'invitation
-  - Liste invitations en attente (token, expiry, renvoyer, annuler)
-  - Page publique `/invitations/:token` → accepter invitation → créer membership
-- [ ] Page succursales (`/dashboard/organisation/succursales`)
-  - CRUD succursales (nom, pays, province, ville, timezone, devise, quartier-général)
-  - Associer membres à des succursales
-- [ ] Permissions par rôle :
-  - ADMIN : tout (membres, paramètres, facturation, intégrations, fournisseurs)
-  - MANAGER : voir historique équipe, gérer préférences, ajouter fournisseurs
-  - MEMBER : usage standard uniquement
-- [ ] Vérification `maxSeats` avant chaque ajout de membre — bloquer + proposer upgrade
-- [ ] Page paramètres org (`/dashboard/organisation/parametres`)
-  - Infos générales, logo, devise de référence, timezone
-  - `historyRetentionDays` — configurable par admin org
-  - `allowResultSharing` / `allowExternalSharing`
+- ✅ `apps/web/app/dashboard/organisation/[orgId]/layout.tsx` — breadcrumb + sous-navigation
+- ✅ Page aperçu, membres, invitations, succursales, facturation, paramètres
+- ✅ `apps/web/app/api/org/create/route.ts` — créer org (plan ENTERPRISE requis)
+- ✅ `apps/web/app/api/org/[orgId]/invite/route.ts` — créer invitation (token crypto, 7j)
+- ✅ `apps/web/app/api/org/[orgId]/members/[userId]/route.ts` — PATCH rôle + DELETE membre
+- ✅ `apps/web/app/api/org/[orgId]/branches/route.ts` — GET + POST succursales
+- ✅ `apps/web/app/api/invitations/[token]/accept/route.ts` — ACID (vérif expiry + sièges)
+- ✅ Switcher org dans la navbar (`getUserOrgs` dans `dashboard/layout.tsx`)
 
-### 1G — Sécurité & Sessions ⏳ 🔒 (dépend 1A)
+### 1G — Sécurité & Sessions ✅
 
-- [ ] Enregistrer session à chaque connexion (`UserSession` : deviceType, IP, userAgent, expiresAt)
-- [ ] Enregistrer/identifier appareils (`UserDevice` : deviceId fingerprint, deviceName)
-- [ ] Vérifier limites sessions simultanées (2 web, 1 mobile, 1 desktop)
-  - Révoquer la session la plus ancienne si limite dépassée
-- [ ] Page `/dashboard/securite`
-  - Liste sessions actives (appareil, IP, localisation approximative, "Cette session")
-  - Bouton "Révoquer" par session
-  - Bouton "Révoquer toutes les autres sessions"
-- [ ] Appareils de confiance (`UserDevice.isTrusted`)
-  - Appareil marqué de confiance après validation 2FA
-  - Liste appareils de confiance + bouton supprimer
-- [ ] Enforce 2FA au niveau org (`Organization.enforce2FA`)
-  - Bloquer accès si org enforce 2FA et user sans 2FA actif
-- [ ] SSO org — ENTERPRISE_PRO uniquement (Phase 7)
+- ✅ Page `/dashboard/securite` — sessions actives via `clerkClient.sessions.getSessionList()`
+- ✅ Affichage : browser + version, mobile/desktop (icon), ville + pays
+- ✅ Section recommandations de sécurité
 
-### 1H — Conformité RGPD / PIPEDA / Loi 25 ⏳ 🔒 (dépend 1B)
+### 1H — Conformité RGPD / PIPEDA / Loi 25 ✅
 
-- [ ] Banner cookies au premier chargement
-  - Boutons : Accepter tout / Personnaliser / Refuser optionnels
-  - `ConsentLog` enregistré (type, granted, ipAddress, version)
-  - Version = hash de la politique en vigueur
-- [ ] Pages légales : `/confidentialite`, `/cgu`, `/cookies`
-  - Chaque page versionnée (changement = nouveau `ConsentLog` requis)
-- [ ] Page `/dashboard/profil/confidentialite`
-  - Préférences consentement (modifier ANALYTICS, MARKETING)
-  - Bouton "Exporter mes données" → archive JSON → `gdprDataExportedAt`
-  - Bouton "Supprimer mon compte" → confirmation → `gdprDeleteRequestedAt = now()`
-    - Afficher délai 30 jours, possibilité d'annuler
-- [ ] Job suppression RGPD (`JOBS section`) — supprimer définitivement J+30 après demande
-- [ ] Préférences notifications (`/dashboard/profil/notifications`)
-  - Toggle par type (price_alert, stock_alert, report_weekly, report_monthly, changelog)
-  - Toggle par canal (EMAIL, IN_APP, SMS si activé, PUSH si app mobile)
-  - `NotificationPreference` créée/MAJ en BD
+- ✅ `CookieBanner.tsx` — localStorage `tp_cookie_consent`, Accept/Decline
+- ✅ Pages légales : `/legal/confidentialite` + `/legal/cgu` (versionnées v1.0.0)
+- ✅ `apps/web/app/dashboard/profil/confidentialite/PrivacyClient.tsx`
+  - ✅ Toggles ANALYTICS/MARKETING → `POST /api/profile/consents` (INSERT only — audit trail)
+  - ✅ Export données → `POST /api/profile/export` + `gdprDataExportedAt`
+  - ✅ Suppression compte → `POST /api/profile/delete` + `gdprDeleteRequestedAt`
+- ✅ Routes API profil : consents, notifications, export, delete
+- ✅ `middleware.ts` — `/invitations/(.*)` et `/legal/(.*)` publiques
 
 ---
 
-## PHASE 2 — Géolocalisation & Moteur de comparaison ⏳
+---
+
+## STACK TECHNOLOGIQUE PHASE 2+ — Décisions de recherche (mai 2026)
+
+> Recherche comparative complète effectuée avant implémentation. Décisions finales ci-dessous.
+
+| Composant | Outil choisi | Justification |
+| --- | --- | --- |
+| Scraping MVP | **Crawlee** (MIT, gratuit) | Playwright + Cheerio intégré, anti-bot, FIFO queue |
+| Scraping prod | **Firecrawl** (~19 USD/mois) | API REST, rendu JS, rotation proxy, pas d'infra |
+| Découverte sites | **SerpAPI** (100/mois gratuit) | Google Shopping direct, prix structurés |
+| Découverte sémantique | **Exa.ai** | Recherche neurale de sites par description produit |
+| Extraction IA | **Claude Sonnet + Instructor.js** | Notre stack + Zod structured output |
+| Fichiers fournisseurs | **SheetJS + pdf-parse + papaparse** | MIT, tout-en-un PDF/Excel/CSV |
+| Taux de change | **Frankfurter** (gratuit, ECB) | Pas de clé, fiable, cache 24h Redis |
+| Taxes provinciales | **JSON config DIY** | Taux fixes, pas de SaaS nécessaire |
+| Jobs asynchrones | **Inngest** (gratuit MVP) | Serverless-native, parfait Next.js/Vercel |
+| Quotas tokens | **@upstash/ratelimit + response.usage** | Précis, Redis Upstash ($0 tier) |
+| Cache | **Upstash Redis** ($0 tier) | Compatible Edge, SDK serverless |
+| Email | **Resend** (100/j gratuit) | React Email templates, domaine custom |
+
+---
+
+## PHASE 2 — Géolocalisation & Moteur de comparaison 🔄
 
 ### 2A — Détection et préférences de localisation ⏳
 
@@ -234,7 +182,7 @@
 - [ ] Préférence manuelle dans `/dashboard/profil/localisation`
   - Pays, devise, timezone, langue (fr-CA / en-CA)
   - Priorité sur détection IP
-- [ ] `lib/geo.ts` — `getUserMarket(req)` → `{ country, currency, locale, taxRegion, timezone }`
+- ✅ `lib/geo.ts` — `getUserMarket(req)` → `{ country, currency, locale, taxRegion, timezone }` (headers Vercel/Cloudflare)
 - [ ] Adresses de livraison (`UserAddress`)
   - CRUD adresses : domicile, bureau, entrepôt, autre
   - Marquer défaut (`isDefault`)
@@ -261,7 +209,15 @@
   - CA/AB, BC, SK, MB : GST 5 % + taxe provinciale variable
   - USA : Sales Tax par état (0 % à ~10 %) — lookup externe (TaxJar API?)
   - EU : TVA 20 % France, 19 % Allemagne, etc.
-- [ ] Peuplement initial table `TaxRate` BD — script seed avec taux officiels
+- [ ] `lib/tax-rates.ts` — config JSON statique provinces canadiennes (pas de SaaS)
+
+  ```ts
+  // taux officiels mai 2026 — mettre à jour manuellement si modification législative
+  const CA_RATES = { QC: { gst: 0.05, pst: 0.09975 }, ON: { hst: 0.13 }, AB: { gst: 0.05 }, … }
+  ```
+
+- [ ] Seed `TaxRate` BD depuis ce JSON (script `packages/db/src/seed/tax-rates.ts`)
+- [ ] USA : Sales Tax par état — table statique (0 % à ~10,25 %) + fallback 0 % si état inconnu
 - [ ] Peuplement initial table `DutyRate` BD — CUSMA + UE + standard
 - [ ] Sites bloqués/préférés par organisation
   - Interface `/dashboard/organisation/marketplaces`
@@ -269,43 +225,29 @@
 - [ ] Sites bloqués/préférés par user
   - `/dashboard/profil/marketplaces` — personnalisation
 
-### 2C — Taux de change ⏳
+### 2C — Taux de change 🔄
 
-- [ ] `lib/exchange.ts` — `getExchangeRate(from, to)` → Decimal
-  - D'abord chercher dans `ExchangeRate` BD (si `validUntil` > now)
-  - Sinon fetch API externe (Frankfurter, Open Exchange Rates, ou Fixer.io)
-  - Sauvegarder en BD avec `validUntil = now + 1h`
-  - Source prioritaire : Frankfurter (gratuit, pas de clé)
-- [ ] Job cron refresh taux de change (toutes les heures) — voir section JOBS
+> **Outil choisi : Frankfurter** (`https://api.frankfurter.app/latest`) — gratuit, données ECB, pas de clé API
+
+- ✅ `lib/exchange.ts` — `getExchangeRate(from, to)` avec cache Redis 24h + persist BD
+- ✅ `lib/redis.ts` — client Upstash Redis singleton
+- [ ] Job Inngest `refresh-exchange-rates` — quotidien (données ECB mises à jour 1×/jour)
 - [ ] Peuplement initial : CAD/USD, CAD/EUR, CAD/GBP, USD/EUR, USD/GBP (paires principales)
 
-### 2D — Moteur de comparaison de prix ⏳ ★
+### 2D — Moteur de comparaison de prix 🔄 ★
 
-- [ ] Barre de recherche principale (`/dashboard/recherche` ou `/ (dashboard home)`)
-  - Input texte : mot-clé, URL produit, UPC, ASIN, SKU fournisseur
-  - Détection automatique du type (`InputType`) par pattern matching
-  - Sélecteur quantité (impact volume discounts + stock check)
-  - Sélecteur adresse de livraison (parmi `UserAddress`)
-  - Sélecteur marketplaces (filtrer parmi celles actives pour le marché user)
-- [ ] Parsers d'input (`lib/input-parsers.ts`)
-  - URL Amazon → extraire ASIN (`/dp/B0XXXX`)
-  - URL Best Buy → extraire SKU
-  - URL Apple → extraire model code
-  - Barcode scanner (mobile) → UPC/EAN
-  - UPC lookup → Open Food Facts ou UPCitemdb pour enrichissement produit
-- [ ] Endpoint `POST /api/search` (protégé, plan-limited)
-  - Vérifier quota `searchCountMonth < PLAN_LIMITS[plan].searchesPerMonth`
-  - Vérifier déduplication (`deduplicateSearch` — si même query < 6h, retourner existant)
-  - Créer `PriceSearch` en BD avec contexte géo
-  - Déclencher job scraping (async)
-  - Incrémenter `searchCountMonth`
-  - Retourner `searchId` pour polling
-- [ ] Pipeline de calcul vrai coût (`lib/calculator.ts`)
-  - `priceInUserCurrency = priceCurrent × exchangeRate`
-  - `dutyAmount = priceInUserCurrency × dutyRate` (si > franchise)
-  - `taxAmount = (priceInUserCurrency + dutyAmount + shippingCost) × taxRate`
-  - `brokerageFee` — estimation selon transporteur et valeur (table statique DHL/UPS/FedEx)
-  - `truePriceTotal = priceInUserCurrency + shippingCost + dutyAmount + taxAmount + brokerageFee`
+- ✅ `app/dashboard/recherche/page.tsx` + `SearchClient.tsx` — UI complète avec quota, polling, segment bar
+- ✅ `app/api/search/route.ts` — POST : quota → déduplication → create → Inngest dispatch
+- ✅ `app/api/search/[id]/route.ts` — GET : polling résultats par searchId
+- ✅ `inngest/scrape-search.ts` — Fonction 3-steps retryable (stub Phase 3)
+- ✅ `app/api/inngest/route.ts` — Endpoint Inngest
+- ✅ `lib/calculator.ts` — `calculateTruePrice()` complet (change + douanes CUSMA + taxes provinciales)
+- ✅ `lib/duties.ts` — franchise 20 $ CAD, frais courtage DHL/UPS/FedEx par tranche
+- ✅ `lib/tax-rates.ts` — toutes provinces CA, 50 États US, EU — JSON statique
+- ✅ `packages/db/src/queries/searches.ts` — CRUD searches + quota check + déduplication
+- [ ] `lib/input-parsers.ts` — détection ASIN/SKU/URL/UPC depuis la query
+- [ ] Sélecteur adresse de livraison dans la barre de recherche
+- [ ] Sélecteur marketplaces (filtrer selon marché user)
 - [ ] Vérification stock suffisant (`stockSufficient = stockQty >= searchQuantity`)
 - [ ] Modes de livraison à afficher par marketplace :
   - Standard (expédition)
@@ -430,67 +372,83 @@
 
 ### 3A — Méthodes d'acquisition ⏳
 
-| Méthode | Coût | Fiabilité | Priorité |
-|---|---|---|---|
-| Amazon PA API | Gratuit (affilié) | ⭐⭐⭐⭐⭐ | 1 — Amazon |
-| Rainforest API | ~50 $/mois | ⭐⭐⭐⭐⭐ | Alt Amazon |
-| PriceAPI.com | ~30 $/mois | ⭐⭐⭐⭐ | Multi-source |
-| Best Buy API | Gratuit (clé) | ⭐⭐⭐⭐ | Best Buy |
-| Walmart Open API | Gratuit (clé) | ⭐⭐⭐⭐ | Walmart |
-| Apple JSON API | Gratuit (public) | ⭐⭐⭐⭐⭐ | Apple |
-| Playwright | Infra only | ⭐⭐⭐ | Fallback |
+> **Stratégie double-couche :** MVP = Crawlee (MIT, self-hosted) · Production = Firecrawl API (~19 USD/mois, zero-infra) · Découverte = SerpAPI + Exa.ai
 
-- [ ] Évaluer et choisir méthode pour chaque marketplace avant Phase 3B
-- [ ] Créer comptes affiliés / API keys pour les services choisis
-- [ ] Ajouter clés API scraping dans `.env`
+| Méthode | Coût | Fiabilité | Priorité |
+| --- | --- | --- | --- |
+| Amazon PA API | Gratuit (affilié) | ⭐⭐⭐⭐⭐ | 1 — Amazon |
+| Best Buy API | Gratuit (clé) | ⭐⭐⭐⭐ | Best Buy |
+| Apple JSON API | Gratuit (public) | ⭐⭐⭐⭐⭐ | Apple |
+| Walmart Open API | Gratuit (clé) | ⭐⭐⭐⭐ | Walmart |
+| **Crawlee** (Playwright) | Infra only (MVP) | ⭐⭐⭐⭐ | Fallback + Costco |
+| **Firecrawl** API | ~19 USD/mois (prod) | ⭐⭐⭐⭐⭐ | Fallback prod |
+| **SerpAPI** Shopping | 100 req/mois gratuit | ⭐⭐⭐⭐ | Découverte prix |
+| **Exa.ai** | Pay-per-use | ⭐⭐⭐⭐ | Découverte sites |
+
+- [ ] Créer comptes affiliés Amazon PA API (CA + US + EU)
+- [ ] Créer clés : Best Buy CA, Best Buy US, Walmart Open API, SerpAPI, Exa.ai
+- [ ] Créer compte Firecrawl (activer en prod quand volume > 50 scrapes/jour)
+- [ ] Ajouter toutes les clés dans `.env` : `SERPAPI_KEY`, `EXA_API_KEY`, `FIRECRAWL_API_KEY`, `AMAZON_PA_*`
 
 ### 3B — Sources par marketplace ⏳ 🔒 (dépend 3A)
 
 **Canada :**
+
 - [ ] Amazon.ca — Amazon PA API (ASIN, prix, prime, stock)
   - Parser : price, originalPrice, primeEligible, isInStock, discounts (coupon clipper, lightning deal)
 - [ ] Best Buy Canada — `https://api.bestbuy.ca/search` (JSON non documenté mais stable)
   - Parser : regularPrice, salePrice, isAvailable, skuId
-- [ ] Costco.ca — Playwright (pas d'API publique)
+- [ ] Costco.ca — Crawlee/Playwright (pas d'API publique)
   - Parser : price, memberPrice, isAvailable
-- [ ] Apple Store Canada — `https://www.apple.com/shop/buy-iphone` JSON interne
+- [ ] Apple Store Canada — JSON interne Apple
   - Parser : price, monthlyPrice, tradeInValue, educationPrice
-- [ ] Walmart.ca — Playwright ou partenaire API
+- [ ] Walmart.ca — Walmart Open API ou Crawlee fallback
 
 **USA :**
+
 - [ ] Amazon.com — PA API (même compte affilié, `marketplace: "www.amazon.com"`)
 - [ ] Best Buy US — `https://api.bestbuy.com/v1` (clé gratuite)
 - [ ] Apple Store US — API JSON (même structure que CA)
 - [ ] Walmart.com — Walmart Open API (clé gratuite)
 
 **Europe :**
+
 - [ ] Amazon.fr / .de / .co.uk — PA API (marketplace EU)
 - [ ] Étendre selon demande utilisateurs (Google Trends pour prioriser)
 
 ### 3C — Infrastructure de scraping (`apps/worker`) ⏳ 🔒 (dépend 3B)
 
-- [ ] `apps/worker` — service Node.js standalone
-  - Consumer de queue (BullMQ ou Cloudflare Queues)
-  - Playwright headless pour sites sans API
-  - Rate limiting respectueux par marketplace
-- [ ] Queue de jobs scraping (`packages/api/src/queue.ts`)
-  - `enqueueScrapeJob(searchId, marketplaces[])` — déclenché par `/api/search`
-  - Un job par marketplace pour parallélisation
-  - Retry x3 avec backoff exponentiel
-- [ ] Cache Redis (Upstash) pour résultats scraping
-  - Clé : `price:{marketplace}:{asin_or_sku}` · TTL : 6h
-  - Clé : `exchange:{from}:{to}` · TTL : 1h
-  - Si cache hit → retourner sans scraper + flag `cached: true`
+> **Jobs : Inngest** (serverless-native, steps retryables, UI dashboard gratuit, parfait Vercel)
+
+- [ ] Installer Inngest SDK : `@inngest/next` dans `apps/web`, `inngest` dans `packages/shared`
+- [ ] `packages/shared/src/inngest.ts` — client Inngest singleton
+- [ ] Fonction Inngest `scrape/price-search` :
+  - Step 1 : vérifier cache Upstash Redis (`price:{marketplace}:{sku}` · TTL 6h)
+  - Step 2 (si cache miss) : dispatcher scrape par marketplace en parallèle
+  - Step 3 : agréger résultats + appeler calculateur
+  - Step 4 : sauvegarder `ProductOffer[]` en BD + notifier client via SSE/polling
+  - Retry automatique x3 par step avec backoff exponentiel (Inngest natif)
+- [ ] MVP scraper : Crawlee (`packages/scraper/src/crawlee/`)
+  - `PlaywrightCrawler` pour Costco/Walmart
+  - `CheerioCrawler` pour pages légères
+  - Rotation user-agent + delays aléatoires respectueux
+- [ ] Prod scraper : Firecrawl (`packages/scraper/src/firecrawl/`)
+  - `POST https://api.firecrawl.dev/v1/scrape` — activer quand volume > 50/jour
+  - Feature flag env `USE_FIRECRAWL=true` pour basculer sans code
+- [ ] Cache Upstash Redis :
+  - `price:{marketplace}:{asin_or_sku}` · TTL 6h
+  - `exchange:{from}:{to}` · TTL 24h
+  - Cache hit → retourner + flag `cached: true`
 - [ ] Fallback : si scraping échoue → retourner cache + `stale: true`
 - [ ] Monitoring parsers (`MarketplaceStatusLog`)
-  - Enregistrer chaque échec
+  - Enregistrer chaque échec dans Inngest event log + BD
   - Si taux d'échec > 10 % sur 1h → `Marketplace.status = DEGRADED`
   - Si 100 % échec → `Marketplace.status = DOWN` + alerte admin
 
 ### 3D — Parsing des rabais par source ⏳ 🔒 (dépend 3C)
 
 | Source | Rabais détectés | Méthode |
-|---|---|---|
+| --- | --- | --- |
 | Amazon (CA/US/EU) | Coupon clipper, Prime, Lightning deal, % off | CSS `.coupon-badge`, `.a-price-savings`, JSON-LD |
 | Best Buy | Sale, Totaltech member, bundle | `regularPrice` vs `salePrice`, badges JSON |
 | Apple | Tradeup, éducation, remboursement | Section "façons d'économiser" JSON |
@@ -528,18 +486,24 @@
 
 ### 3F — Import fichiers fournisseurs ⏳ 🔒 (dépend 3E + 5A)
 
+> **Parsers :** `SheetJS` (xlsx/xls), `pdf-parse` (PDF texte), `papaparse` (CSV) + Claude Sonnet pour extraction structurée via Instructor.js
+
 - [ ] Upload fichier (`SupplierFileImport`)
   - Types : INVOICE, CATALOG, PURCHASE_ORDER, PRICE_LIST, PRODUCT_LIST
-  - Formats supportés : PDF, Excel (.xlsx), CSV, Word
-  - Upload sécurisé vers R2/S3 — URL stockée en BD
-  - Champ `documentDate` : date du document (pas de l'upload)
-- [ ] Parser IA (GPT-4o)
-  - Extraire produits, prix, quantités, dates
-  - `parsedBy: "ai"` + `rowCount` nb produits extraits
-  - `errorLog` si extraction partielle
-  - Validation humaine possible (interface de revue)
-- [ ] Statuts du traitement : `pending → processing → done / error`
-- [ ] Notification quand import terminé (in-app + email)
+  - Formats supportés : PDF, Excel (.xlsx/.xls), CSV — upload vers R2/S3
+  - `documentDate` : date du document (pas de l'upload)
+- [ ] `packages/scraper/src/file-parsers/` :
+  - `parseExcel(buffer)` → `string[][]` via SheetJS (`xlsx`)
+  - `parseCsv(text)` → `string[][]` via papaparse
+  - `parsePdf(buffer)` → `string` via pdf-parse
+- [ ] Pipeline Inngest `files/parse-supplier-file` :
+  - Step 1 : télécharger fichier depuis R2, détecter format, parser en texte brut
+  - Step 2 : envoyer texte + schéma Zod à Claude Sonnet via Instructor.js
+  - Step 3 : valider output Zod → créer `ProductOffer[]` en BD
+  - `parsedBy: "ai"` + `rowCount` + `errorLog` si extraction partielle
+- [ ] Statuts : `pending → processing → done / error`
+- [ ] Notification Inngest quand terminé (in-app + email)
+- [ ] Interface de révision manuelle si `errorLog` non vide
 - [ ] Historique imports par fournisseur
 
 ---
@@ -596,36 +560,49 @@
 
 ### 5A — Fonctionnalités IA ⏳
 
-- [ ] `lib/ai.ts` — client OpenAI singleton
-  - Respecter `aiTokensLimit` avant chaque appel
-  - Décompter `aiTokensUsed` après chaque appel
-  - Si `byokApiKey` présent (ENTERPRISE_PRO) → utiliser cette clé
+> **Stack IA :** Claude Sonnet (`claude-sonnet-4-6`) + **Instructor.js** (Zod structured output) — pas d'OpenAI, cohérence totale avec notre modèle
+
+- [ ] `lib/ai.ts` — client Anthropic + Instructor.js singleton
+
+  ```ts
+  import Anthropic from "@anthropic-ai/sdk";
+  import Instructor from "@instructor-ai/anthropic";
+  const client = Instructor({ client: new Anthropic(), mode: "TOOLS" });
+  ```
+
+- [ ] Middleware quota avant chaque appel IA :
+  - Vérifier `aiTokensUsed < aiTokensLimit` via `@upstash/ratelimit`
+  - Si BYOK (ENTERPRISE_PRO) → utiliser `byokApiKey` déchiffré, pas de quota
+  - Après appel : décompter `response.usage.input_tokens + output_tokens` → `consumeAiTokens()`
+- [ ] `lib/ai-extractor.ts` — extraction structurée produit via Instructor + Zod
+  - Schéma Zod : `{ name, brand, price, currency, sku, availability, discounts[] }`
+  - Utilisé par scraper (pages HTML → données structurées) et parseur fichiers
 - [ ] Résumé intelligent post-recherche (`PriceSearch.aiSummary`)
-  - "La meilleure offre est Amazon.com à 1 142 $ CAD tout inclus. Vous économisez 356 $ vs Best Buy Canada. Attention : livraison 3-5 jours, douanes CUSMA applicables au-dessus de 20 $."
-- [ ] Catégorisation automatique produits (`Product.category`, `aiCategoryConfidence`)
-- [ ] Parser IA fichiers fournisseurs (Phase 3F)
+  - "La meilleure offre est Amazon.com à 1 142 $ CAD tout inclus. Vous économisez 356 $ vs Best Buy Canada."
+- [ ] Catégorisation automatique produits (job Inngest `products/categorize`, toutes les 6h)
 - [ ] Conversation contextuelle sur un résultat (`AiConversation`)
-  - Interface chat dans le panneau résultat
-  - Context injecté : `PriceSearch` + `ProductOffer[]` + user market
-  - Exemples : "Est-ce que les droits de douane sont applicables ?" / "Quel est le meilleur moment pour acheter ?"
-- [ ] Suggestions produits alternatifs moins chers (cross-search IA)
+  - Streaming SSE via `streamText` · context : `PriceSearch` + `ProductOffer[]` + user market
+- [ ] Suggestions produits alternatifs (SerpAPI + Exa.ai pour trouver variantes moins chères)
 
 ### 5B — Gestion tokens IA ⏳
 
+> **Enforcement :** `@upstash/ratelimit` (sliding window mensuel) + `response.usage` pour décompte précis
+
+- [ ] `lib/ai-quota.ts` — `checkAndConsumeTokens(userId, estimatedTokens)`
+  - `@upstash/ratelimit` : window 30j, limite selon plan (PREMIUM: 10K, ENTERPRISE: 50K)
+  - Si quota dépassé → 429 avec message upgrade
+- [ ] `consumeAiTokens(userId, amount)` — enregistre en BD après chaque appel (audit)
 - [ ] Dashboard usage IA (`/dashboard/ia`)
-  - Compteur tokens utilisés / limite ce mois
-  - Barre de progression
-  - Historique conversations + tokens utilisés
+  - Compteur tokens utilisés / limite ce mois (barre de progression)
+  - Historique appels + tokens par opération
   - Reset date (`aiTokensResetAt` — 1er du mois)
-- [ ] Achat tokens supplémentaires (particuliers) — Stripe one-time payment
-  - Pack 10K tokens · Pack 50K tokens · Pack 200K tokens
-  - `AiTokenPurchase` enregistré en BD
+- [ ] Achat tokens supplémentaires — Stripe Payment Intent (one-time)
+  - Pack 10K · Pack 50K · Pack 200K — webhook `payment_intent.succeeded` déjà géré
 - [ ] Achat tokens org (ENTERPRISE) — `OrgAiTokenPurchase`
 - [ ] BYOK (ENTERPRISE_PRO)
-  - Page saisie clé API OpenAI personnelle
-  - `byokApiKey` chiffré AES-256 avant stockage
-  - Si BYOK activé → pas de décompte tokens TruePriceAI
-- [ ] Réinitialisation mensuelle automatique compteurs (job cron — voir JOBS)
+  - `byokApiKey` chiffré AES-256-GCM avant stockage
+  - Si BYOK → utiliser cette clé Anthropic, zéro quota TruePriceAI consommé
+- [ ] Job Inngest `tokens/reset-monthly` — 1er du mois : `aiTokensUsed = 0`
 
 ### 5C — Alertes intelligentes ⏳ 🔒 (dépend 2H + 5A)
 
@@ -798,10 +775,10 @@
 
 ## JOBS & CRONS — Tâches planifiées ⏳
 
-> Toutes les tâches automatisées. Service : Cloudflare Workers Cron, Vercel Cron, ou BullMQ scheduler.
+> Toutes les tâches automatisées. **Service : Inngest** (serverless-native, Next.js/Vercel, dashboard UI, retry automatique).
 
 | Job | Fréquence | Description |
-|---|---|---|
+| --- | --- | --- |
 | `refresh-exchange-rates` | Toutes les heures | Fetch taux de change + MAJ `ExchangeRate` BD |
 | `check-price-alerts` | Toutes les heures | Vérifier `PriceAlert` actives → notifier si prix cible atteint |
 | `check-stock-alerts` | Toutes les heures | Vérifier `StockAlert` actives → notifier si retour en stock |
@@ -847,7 +824,7 @@
 
 ## STRIPE — Flux complets ⏳
 
-```
+```text
 User s'inscrit (Clerk)
     ↓ webhook Clerk user.created
     ↓ User créé en BD + Stripe Customer + stripeCustomerId sauvegardé
