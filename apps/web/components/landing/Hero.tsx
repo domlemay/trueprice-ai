@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useState } from "react";
+import React from "react";
+import Link from "next/link";
 import { motion, type Variants } from "framer-motion";
-import { Search, ArrowRight, Sparkles, Shield, Zap } from "lucide-react";
+import { ArrowRight, Sparkles, Shield, Zap, TrendingDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const containerVariants: Variants = {
@@ -16,7 +17,6 @@ const itemVariants: Variants = {
 };
 
 export function Hero() {
-  const [searchValue, setSearchValue] = useState("");
 
   return (
     <section className="relative min-h-screen bg-hero-pattern overflow-hidden flex items-center">
@@ -77,36 +77,35 @@ export function Hero() {
               <span className="text-white font-medium">En temps réel.</span>
             </motion.p>
 
-            {/* Search bar */}
-            <motion.div variants={itemVariants} className="mb-4">
-              <div className="relative max-w-xl mx-auto lg:mx-0 group">
-                <div className="absolute inset-0 bg-gradient-to-r from-tp-cyan-500/30 to-tp-cyan-300/30 rounded-2xl blur-xl group-focus-within:opacity-100 opacity-0 transition-opacity" />
-                <div className="relative flex items-center bg-tp-card border border-tp-cyan-500/20 rounded-2xl p-2 gap-2 focus-within:border-tp-cyan-500 transition-all">
-                  <Search className="w-5 h-5 text-white/50 ml-3 shrink-0" />
-                  <input
-                    type="text"
-                    value={searchValue}
-                    onChange={(e) => setSearchValue(e.target.value)}
-                    placeholder="Entrez un code UPC, modèle ou nom de produit…"
-                    className="flex-1 bg-transparent text-white placeholder-white/40 text-sm outline-none py-2"
-                  />
-                  <Button size="sm" className="rounded-xl gap-2 shrink-0">
-                    Comparer
-                    <ArrowRight className="w-4 h-4" />
-                  </Button>
-                </div>
-              </div>
+            {/* CTAs */}
+            <motion.div variants={itemVariants} className="flex flex-col sm:flex-row gap-3 justify-center lg:justify-start mb-6">
+              <Button asChild size="lg" className="gap-2 rounded-xl shadow-tp-glow">
+                <Link href="/sign-up">
+                  Commencer gratuitement
+                  <ArrowRight className="w-4 h-4" />
+                </Link>
+              </Button>
+              <Button asChild variant="outline" size="lg" className="rounded-xl">
+                <a href="#fonctionnalites">Voir comment ça marche</a>
+              </Button>
             </motion.div>
 
-            <motion.p variants={itemVariants} className="text-sm text-white/50 mb-8">
-              ✓ Essai gratuit &nbsp;·&nbsp; ✓ Aucune carte requise &nbsp;·&nbsp; ✓ Résultats en 3 secondes
-            </motion.p>
+            <motion.div variants={itemVariants} className="flex flex-wrap gap-4 justify-center lg:justify-start mb-8">
+              {[
+                "✓ Essai gratuit",
+                "✓ Aucune carte requise",
+                "✓ Résultats en temps réel",
+              ].map((item) => (
+                <span key={item} className="text-sm text-white/50 font-medium">{item}</span>
+              ))}
+            </motion.div>
 
             {/* Trust pills */}
             <motion.div variants={itemVariants} className="flex flex-wrap gap-3 justify-center lg:justify-start">
               {[
                 { icon: <Zap className="w-3.5 h-3.5" />, text: "Taux de change en direct" },
                 { icon: <Shield className="w-3.5 h-3.5" />, text: "Calcul douanes automatique" },
+                { icon: <TrendingDown className="w-3.5 h-3.5" />, text: "Économies moyennes 18 %" },
                 { icon: <Sparkles className="w-3.5 h-3.5" />, text: "Assistant IA inclus" },
               ].map((pill) => (
                 <div

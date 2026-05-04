@@ -45,5 +45,5 @@ const appearance: Appearance = {
 };
 
 export default function SignUpPage() {
-  return <SignUp appearance={appearance} />;
+  return <SignUp appearance={appearance} forceRedirectUrl="/dashboard" />;
 }

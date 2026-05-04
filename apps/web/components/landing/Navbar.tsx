@@ -2,8 +2,9 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import { useUser, UserButton } from "@clerk/nextjs";
 import { motion, useScroll, useMotionValueEvent } from "framer-motion";
-import { Menu, X } from "lucide-react";
+import { Menu, X, LayoutDashboard } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -15,9 +16,10 @@ const navLinks = [
 ];
 
 export function Navbar() {
-  const [isScrolled, setIsScrolled] = useState(false);
-  const [isMobileOpen, setIsMobileOpen] = useState(false);
-  const { scrollY } = useScroll();
+  const [isScrolled,    setIsScrolled]    = useState(false);
+  const [isMobileOpen,  setIsMobileOpen]  = useState(false);
+  const { isSignedIn, isLoaded }          = useUser();
+  const { scrollY }                       = useScroll();
 
   useMotionValueEvent(scrollY, "change", (latest) => {
     setIsScrolled(latest > 20);
@@ -70,16 +72,33 @@ export function Navbar() {
             </nav>
 
             {/* Desktop CTAs */}
-            <div className="hidden md:flex items-center gap-2">
-              <Button asChild variant="ghost" size="sm">
-                <Link href="/sign-in">Se connecter</Link>
-              </Button>
-              <Button asChild variant="outline" size="sm">
-                <Link href="/sign-up">S'inscrire</Link>
-              </Button>
-              <Button asChild size="sm">
-                <Link href="/sign-up">Essayer gratuitement</Link>
-              </Button>
+            <div className="hidden md:flex items-center gap-2 min-w-[220px] justify-end">
+              {!isLoaded ? (
+                // Skeleton to avoid layout shift
+                <div className="h-9 w-48 rounded-lg bg-white/5 animate-pulse" />
+              ) : isSignedIn ? (
+                <>
+                  <Button asChild variant="ghost" size="sm">
+                    <Link href="/dashboard" className="gap-2">
+                      <LayoutDashboard size={15} strokeWidth={1.75} />
+                      Tableau de bord
+                    </Link>
+                  </Button>
+                  <UserButton />
+                </>
+              ) : (
+                <>
+                  <Button asChild variant="ghost" size="sm">
+                    <Link href="/sign-in">Se connecter</Link>
+                  </Button>
+                  <Button asChild variant="outline" size="sm">
+                    <Link href="/sign-up">S'inscrire</Link>
+                  </Button>
+                  <Button asChild size="sm">
+                    <Link href="/sign-up">Essayer gratuitement</Link>
+                  </Button>
+                </>
+              )}
             </div>
 
             {/* Mobile Toggle */}
@@ -115,15 +134,23 @@ export function Navbar() {
             ))}
           </nav>
           <div className="flex flex-col gap-3 mt-auto">
-            <Button asChild variant="ghost" size="lg" className="w-full">
-              <Link href="/sign-in">Se connecter</Link>
-            </Button>
-            <Button asChild variant="outline" size="lg" className="w-full">
-              <Link href="/sign-up">S'inscrire</Link>
-            </Button>
-            <Button asChild size="lg" className="w-full">
-              <Link href="/sign-up">Essayer gratuitement</Link>
-            </Button>
+            {isSignedIn ? (
+              <Button asChild size="lg" className="w-full">
+                <Link href="/dashboard">Tableau de bord</Link>
+              </Button>
+            ) : (
+              <>
+                <Button asChild variant="ghost" size="lg" className="w-full">
+                  <Link href="/sign-in">Se connecter</Link>
+                </Button>
+                <Button asChild variant="outline" size="lg" className="w-full">
+                  <Link href="/sign-up">S'inscrire</Link>
+                </Button>
+                <Button asChild size="lg" className="w-full">
+                  <Link href="/sign-up">Essayer gratuitement</Link>
+                </Button>
+              </>
+            )}
           </div>
         </div>
       </motion.div>

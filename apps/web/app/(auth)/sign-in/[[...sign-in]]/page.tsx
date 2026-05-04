@@ -46,5 +46,5 @@ const appearance: Appearance = {
 };
 
 export default function SignInPage() {
-  return <SignIn appearance={appearance} />;
+  return <SignIn appearance={appearance} forceRedirectUrl="/dashboard" />;
 }
