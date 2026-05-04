@@ -2,21 +2,26 @@ import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { Webhook } from "svix";
 import type { WebhookEvent } from "@clerk/nextjs/server";
+import { clerkClient } from "@clerk/nextjs/server";
 import { prisma } from "@trueprice-ai/db";
 import {
   createUser,
   syncUserFromClerk,
   requestAccountDeletion,
+  updateUserPlan,
 } from "@trueprice-ai/db";
+import { stripe } from "@/lib/stripe";
 
 export const runtime = "nodejs";
+
+const TRIAL_DAYS = 14;
 
 // Vérification HMAC Svix — rejette toute requête non signée par Clerk
 async function verifyWebhook(req: Request): Promise<WebhookEvent> {
   const secret = process.env.CLERK_WEBHOOK_SECRET;
   if (!secret) throw new Error("CLERK_WEBHOOK_SECRET non configuré");
 
-  const headersList = await headers();
+  const headersList = headers();
   const svix_id        = headersList.get("svix-id");
   const svix_timestamp = headersList.get("svix-timestamp");
   const svix_signature = headersList.get("svix-signature");
@@ -46,6 +51,8 @@ export async function POST(req: Request) {
 
   try {
     switch (event.type) {
+
+      // ─── Nouvelle inscription ────────────────────────────────────────────
       case "user.created": {
         const { id, email_addresses, first_name, last_name, image_url } = event.data;
         const email = email_addresses[0]?.email_address;
@@ -53,22 +60,49 @@ export async function POST(req: Request) {
 
         const name = [first_name, last_name].filter(Boolean).join(" ") || null;
 
-        // Transaction : créer user + préférences notif par défaut
-        const user = await createUser({
-          clerkId:   id,
+        // 1. Créer le customer Stripe (avant l'user BD pour pouvoir passer l'ID)
+        const stripeCustomer = await stripe.customers.create({
           email,
-          name,
-          avatarUrl: image_url ?? null,
+          name: name ?? undefined,
+          metadata: { clerkId: id },
         });
 
-        // Log usage
+        // 2. Créer l'user en BD + préférences notif par défaut (transaction ACID)
+        const user = await createUser({
+          clerkId:          id,
+          email,
+          name,
+          avatarUrl:        image_url ?? null,
+          stripeCustomerId: stripeCustomer.id,
+        });
+
+        // 3. Activer l'essai PREMIUM 14 jours
+        const trialEndsAt = new Date(Date.now() + TRIAL_DAYS * 24 * 60 * 60 * 1000);
+        await updateUserPlan(user.id, "PREMIUM", {
+          isTrialing: true,
+          trialEndsAt,
+          trialPlan:  "PREMIUM",
+        });
+
+        // 4. Synchroniser le plan dans les publicMetadata Clerk
+        //    → getSessionPlan() retourne "PREMIUM" dès la première session
+        const client = await clerkClient();
+        await client.users.updateUserMetadata(id, {
+          publicMetadata: { plan: "PREMIUM" },
+        });
+
         await prisma.usageLog.create({
-          data: { userId: user.id, action: "user.created" },
+          data: {
+            userId:   user.id,
+            action:   "user.created",
+            metadata: { stripeCustomerId: stripeCustomer.id, trial: true },
+          },
         });
 
         break;
       }
 
+      // ─── Mise à jour profil ───────────────────────────────────────────────
       case "user.updated": {
         const { id, email_addresses, first_name, last_name, image_url } = event.data;
         const email = email_addresses[0]?.email_address;
@@ -87,6 +121,7 @@ export async function POST(req: Request) {
         break;
       }
 
+      // ─── Suppression compte → soft delete RGPD ───────────────────────────
       case "user.deleted": {
         const { id } = event.data;
         if (!id) break;
@@ -94,19 +129,17 @@ export async function POST(req: Request) {
         const existing = await prisma.user.findUnique({ where: { clerkId: id } });
         if (!existing) break;
 
-        // Soft delete RGPD — suppression définitive par job cron J+30
+        // gdprDeleteRequestedAt = now() → job cron supprime définitivement J+30
         await requestAccountDeletion(id);
 
         break;
       }
 
       default:
-        // Événement non géré — ignorer silencieusement
         break;
     }
   } catch (err) {
     console.error("[Clerk webhook] Erreur traitement:", event.type, err);
-    // Retourner 200 quand même pour éviter les retry Clerk sur erreurs applicatives
     return NextResponse.json({ error: "Erreur interne" }, { status: 500 });
   }
 
