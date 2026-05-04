@@ -43,7 +43,7 @@ export function Navbar() {
       >
         <div className="container mx-auto px-4 max-w-7xl">
           <div className="flex items-center justify-between h-16 md:h-20">
-            {/* Logo — utilise le SVG officiel de docs/design-system/assets/ */}
+            {/* Logo */}
             <Link href="/" className="flex items-center gap-2 group">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none" className="w-8 h-8 group-hover:scale-110 transition-transform">
                 <path d="M18 28h8l10 36h36l8-28H32" stroke="#00D4C8" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round"/>
@@ -70,9 +70,16 @@ export function Navbar() {
             </nav>
 
             {/* Desktop CTAs */}
-            <div className="hidden md:flex items-center gap-3">
-              <Button variant="outline" size="sm">Se connecter</Button>
-              <Button size="sm">Essayer gratuitement</Button>
+            <div className="hidden md:flex items-center gap-2">
+              <Button asChild variant="ghost" size="sm">
+                <Link href="/sign-in">Se connecter</Link>
+              </Button>
+              <Button asChild variant="outline" size="sm">
+                <Link href="/sign-up">S'inscrire</Link>
+              </Button>
+              <Button asChild size="sm">
+                <Link href="/sign-up">Essayer gratuitement</Link>
+              </Button>
             </div>
 
             {/* Mobile Toggle */}
@@ -108,8 +115,15 @@ export function Navbar() {
             ))}
           </nav>
           <div className="flex flex-col gap-3 mt-auto">
-            <Button variant="outline" size="lg" className="w-full">Se connecter</Button>
-            <Button size="lg" className="w-full">Essayer gratuitement</Button>
+            <Button asChild variant="ghost" size="lg" className="w-full">
+              <Link href="/sign-in">Se connecter</Link>
+            </Button>
+            <Button asChild variant="outline" size="lg" className="w-full">
+              <Link href="/sign-up">S'inscrire</Link>
+            </Button>
+            <Button asChild size="lg" className="w-full">
+              <Link href="/sign-up">Essayer gratuitement</Link>
+            </Button>
           </div>
         </div>
       </motion.div>

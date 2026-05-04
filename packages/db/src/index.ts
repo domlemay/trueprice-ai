@@ -22,3 +22,4 @@ export * from "./queries/organizations";
 export * from "./queries/subscriptions";
 export * from "./queries/searches";
 export * from "./queries/favorites";
+export * from "./queries/alerts";

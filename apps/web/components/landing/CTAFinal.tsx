@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import Link from "next/link";
 import { motion } from "framer-motion";
 import { ArrowRight, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -44,16 +45,14 @@ export function CTAFinal() {
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-8">
-            <Button size="xl" className="gap-3 rounded-2xl shadow-tp-glow-strong">
-              Commencer gratuitement
-              <ArrowRight className="w-5 h-5" />
+            <Button asChild size="xl" className="gap-3 rounded-2xl shadow-tp-glow-strong">
+              <Link href="/sign-up">
+                Commencer gratuitement
+                <ArrowRight className="w-5 h-5" />
+              </Link>
             </Button>
-            <Button
-              variant="outline"
-              size="xl"
-              className="rounded-2xl"
-            >
-              Voir les tarifs
+            <Button asChild variant="outline" size="xl" className="rounded-2xl">
+              <a href="#tarifs">Voir les tarifs</a>
             </Button>
           </div>
 

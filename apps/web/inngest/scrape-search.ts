@@ -1,6 +1,9 @@
 import { inngest } from "@trueprice-ai/shared";
 import { prisma } from "@trueprice-ai/db";
-import { searchBestBuyCA } from "@/lib/scrapers/bestbuy-ca";
+import { searchBestBuyCA }     from "@/lib/scrapers/bestbuy-ca";
+import { searchBestBuyUS }     from "@/lib/scrapers/bestbuy-us";
+import { searchAppleStoreCA, searchAppleStoreUS } from "@/lib/scrapers/apple-store";
+import { searchAmazonCA, searchAmazonUS }          from "@/lib/scrapers/amazon-pa";
 import { calculateTruePrice } from "@/lib/calculator";
 import type { ScrapedOffer } from "@/lib/scrapers/types";
 
@@ -19,7 +22,11 @@ export const scrapeSearch = inngest.createFunction(
     const rawOffers = await step.run("scrape-sources", async () => {
       const results = await Promise.allSettled([
         searchBestBuyCA(query, 5),
-        // Phase 3B : ajouter Amazon PA API, Best Buy US, Apple, etc.
+        searchBestBuyUS(query, 5),      // key-gated, no-op if BESTBUY_US_API_KEY absent
+        searchAppleStoreCA(query, 3),   // public API, no-op if query isn't Apple product
+        searchAppleStoreUS(query, 3),   // public API, no-op if query isn't Apple product
+        searchAmazonCA(query, 5),       // key-gated, no-op if PA API keys absent
+        searchAmazonUS(query, 5),       // key-gated, no-op if PA API keys absent
       ]);
 
       const offers: ScrapedOffer[] = [];

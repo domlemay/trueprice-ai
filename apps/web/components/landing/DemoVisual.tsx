@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import Link from "next/link";
 import { motion } from "framer-motion";
 import { ArrowRight, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -171,9 +172,11 @@ export function DemoVisual() {
               ))}
             </div>
 
-            <Button size="lg" className="w-full gap-2 rounded-xl">
-              Essayer avec mon produit
-              <ArrowRight className="w-5 h-5" />
+            <Button asChild size="lg" className="w-full gap-2 rounded-xl">
+              <Link href="/sign-up">
+                Essayer avec mon produit
+                <ArrowRight className="w-5 h-5" />
+              </Link>
             </Button>
           </motion.div>
         </div>

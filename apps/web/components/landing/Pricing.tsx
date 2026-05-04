@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import Link from "next/link";
 import { motion } from "framer-motion";
 import { Check, Zap, Building2, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -17,6 +18,7 @@ const plans = [
     description: "Pour essayer TruePriceAI sans risque.",
     cta: "Commencer gratuitement",
     ctaVariant: "outline" as const,
+    ctaHref: "/sign-up",
     popular: false,
     features: [
       { text: "5 recherches par jour", included: true },
@@ -38,6 +40,7 @@ const plans = [
     description: "Tout ce qu'il vous faut pour économiser au quotidien.",
     cta: "Démarrer Premium",
     ctaVariant: "default" as const,
+    ctaHref: "/sign-up?plan=premium",
     popular: true,
     features: [
       { text: "Recherches illimitées", included: true },
@@ -59,6 +62,7 @@ const plans = [
     description: "Veille concurrentielle et procurement B2B avancé.",
     cta: "Contacter l'équipe",
     ctaVariant: "navy" as const,
+    ctaHref: "mailto:hello@truepricai.ca",
     popular: false,
     features: [
       { text: "Tout le plan Premium", included: true },
@@ -182,8 +186,8 @@ export function Pricing() {
                 ))}
               </ul>
 
-              <Button variant={plan.ctaVariant} size="lg" className="w-full">
-                {plan.cta}
+              <Button asChild variant={plan.ctaVariant} size="lg" className="w-full">
+                <Link href={plan.ctaHref}>{plan.cta}</Link>
               </Button>
             </motion.div>
           ))}
