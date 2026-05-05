@@ -65,12 +65,8 @@ export function DashboardNav({ orgs }: Props) {
   const pathname            = usePathname();
   const router              = useRouter();
 
-  const [lang,        setLang]        = useState<"fr" | "en">(() => {
-    if (typeof window !== "undefined") {
-      return (localStorage.getItem("lang") as "fr" | "en") ?? "fr";
-    }
-    return "fr";
-  });
+  const [mounted,     setMounted]     = useState(false);
+  const [lang,        setLang]        = useState<"fr" | "en">("fr");
   const [orgOpen,     setOrgOpen]     = useState(false);
   const [userOpen,    setUserOpen]    = useState(false);
   const [notifOpen,   setNotifOpen]   = useState(false);
@@ -106,8 +102,13 @@ export function DashboardNav({ orgs }: Props) {
   }, []);
 
   useEffect(() => {
+    setMounted(true);
+    const stored = localStorage.getItem("lang") as "fr" | "en" | null;
+    if (stored) setLang(stored);
+  }, []);
+
+  useEffect(() => {
     fetchNotifs();
-    // Rafraîchir toutes les 60 secondes
     const id = setInterval(fetchNotifs, 60_000);
     return () => clearInterval(id);
   }, [fetchNotifs]);
@@ -238,15 +239,15 @@ export function DashboardNav({ orgs }: Props) {
             {lang.toUpperCase()}
           </button>
 
-          {/* Thème */}
+          {/* Thème — rendu conditionnel après mount pour éviter hydration mismatch */}
           <button
             onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-            title={theme === "dark" ? "Mode clair" : "Mode sombre"}
+            title={mounted && theme === "light" ? "Mode sombre" : "Mode clair"}
             className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-colors"
           >
-            {theme === "dark"
-              ? <Sun  size={16} strokeWidth={1.75} />
-              : <Moon size={16} strokeWidth={1.75} />}
+            {mounted && theme === "light"
+              ? <Moon size={16} strokeWidth={1.75} />
+              : <Sun  size={16} strokeWidth={1.75} />}
           </button>
 
           {/* Cloche notifications */}
