@@ -14,7 +14,18 @@ export async function GET() {
     getUnreadCount(user.id),
   ]);
 
-  return NextResponse.json({ notifications, unreadCount });
+  return NextResponse.json({
+    notifications: notifications.map((n) => ({
+      id:        n.id,
+      type:      n.type,
+      title:     n.title,
+      body:      n.body,
+      link:      n.link,
+      isRead:    n.isRead,
+      createdAt: n.createdAt.toISOString(),
+    })),
+    unreadCount,
+  });
 }
 
 export async function PATCH() {

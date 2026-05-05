@@ -217,7 +217,7 @@ export function DashboardNav({ orgs }: Props) {
           {orgs.length === 0 && (
             <Link
               href="/dashboard/organisation"
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-slate-500 hover:text-slate-300 hover:bg-white/5 transition-colors whitespace-nowrap text-xs"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-colors whitespace-nowrap"
             >
               <Building2 size={13} strokeWidth={1.75} />
               + Créer une org

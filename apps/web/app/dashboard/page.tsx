@@ -44,7 +44,7 @@ export default async function DashboardPage() {
         ].map(({ icon: Icon, label, value, sub }) => (
           <div
             key={label}
-            className="bg-tp-card border border-tp-cyan-500/15 rounded-xl p-5"
+            className="bg-tp-navy-card border border-tp-cyan-500/15 rounded-xl p-5"
           >
             <div className="flex items-center gap-3 mb-3">
               <Icon size={18} className="text-tp-cyan-500" strokeWidth={1.75} />
@@ -57,7 +57,7 @@ export default async function DashboardPage() {
       </div>
 
       {/* Zone principale — placeholder */}
-      <div className="rounded-xl border border-tp-cyan-500/15 bg-tp-card p-12 text-center">
+      <div className="rounded-xl border border-tp-cyan-500/15 bg-tp-navy-card p-12 text-center">
         <Search size={40} className="text-tp-cyan-500/40 mx-auto mb-4" strokeWidth={1.5} />
         <h2 className="font-display text-xl font-semibold text-white mb-2">
           Aucune recherche récente
