@@ -218,23 +218,22 @@
   const CA_RATES = { QC: { gst: 0.05, pst: 0.09975 }, ON: { hst: 0.13 }, AB: { gst: 0.05 }, … }
   ```
 
-- [ ] Seed `TaxRate` BD depuis ce JSON (script `packages/db/src/seed/tax-rates.ts`)
-- [ ] USA : Sales Tax par état — table statique (0 % à ~10,25 %) + fallback 0 % si état inconnu
-- [ ] Peuplement initial table `DutyRate` BD — CUSMA + UE + standard
+- ✅ Seed `TaxRate` BD — 25 taux (13 provinces CA, 5 états US principaux, 3 pays EU) — `packages/db/src/seed.ts`
+- ✅ Peuplement table `DutyRate` BD — 7 entrées (CUSMA US→CA/CA→US, EU→CA, UK→CA) — `packages/db/src/seed.ts`
 - [ ] Sites bloqués/préférés par organisation
   - Interface `/dashboard/organisation/marketplaces`
   - Cocher/décocher marketplaces actives pour l'org
 - [ ] Sites bloqués/préférés par user
   - `/dashboard/profil/marketplaces` — personnalisation
 
-### 2C — Taux de change 🔄
+### 2C — Taux de change ✅
 
 > **Outil choisi : Frankfurter** (`https://api.frankfurter.app/latest`) — gratuit, données ECB, pas de clé API
 
 - ✅ `lib/exchange.ts` — `getExchangeRate(from, to)` avec cache Redis 24h + persist BD
 - ✅ `lib/redis.ts` — client Upstash Redis singleton
-- [ ] Job Inngest `refresh-exchange-rates` — quotidien (données ECB mises à jour 1×/jour)
-- [ ] Peuplement initial : CAD/USD, CAD/EUR, CAD/GBP, USD/EUR, USD/GBP (paires principales)
+- ✅ `inngest/jobs/refresh-exchange-rates.ts` — cron quotidien (`0 0 * * *`) + 8 paires de devises
+- ✅ Peuplement on-demand : `getExchangeRate()` fetch Frankfurter à la première requête et persiste en BD
 
 ### 2D — Moteur de comparaison de prix 🔄 ★
 
@@ -252,7 +251,7 @@
 - ✅ `OfferCard` — bouton ♡ Favori (POST /api/favorites), lien ExternalLink vers produit
 - ✅ `OfferCard` — prix barré `priceOriginal` si différent de `priceCurrent`
 - ✅ Limitation par plan + compteur usage (x / 10 recherches ce mois) dans l'UI
-- ⏳ Seed BD `Marketplace` — Amazon.ca/.com, Best Buy CA/US, Apple CA/US (bloquant pour offres non-null)
+- ✅ Seed BD `Marketplace` — 12 marketplaces (Amazon CA/US/FR/DE/UK, Best Buy CA/US, Apple CA/US, Walmart CA/US, Costco CA)
 - [ ] `lib/input-parsers.ts` — détection ASIN/SKU/URL/UPC depuis la query
 - [ ] Sélecteur adresse de livraison dans la barre de recherche
 - [ ] Sélecteur marketplaces (filtrer selon marché user)
@@ -806,8 +805,8 @@
 - ✅ `packages/db/src/index.ts` — exports + singleton client (queries users, orgs, subscriptions, searches, favorites, alerts, notifications)
 - ✅ `packages/db/src/queries/` — helpers par domaine complets
 - ✅ Modèle `Notification` ajouté — `userId`, `type`, `title`, `body`, `link?`, `isRead`, `createdAt` + indexes
-- ⏳ Seed `Marketplace` — Amazon.ca/.com, Best Buy CA/US, Apple CA/US (bloquant pour `marketplaceId` non-null)
-- ⏳ Seed `TaxRate` + `DutyRate` — taux officiels (déjà dans `lib/tax-rates.ts` JSON statique)
+- ✅ Seed `Marketplace` — 12 marketplaces seedées (`npm run db:seed`)
+- ✅ Seed `TaxRate` + `DutyRate` — 25 taux + 7 droits de douane (`npm run db:seed`)
 - ⏳ `npm run db:migrate` — migration versionnée (avant production)
 
 ---

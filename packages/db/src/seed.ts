@@ -48,21 +48,14 @@ async function seedTaxRates() {
   ];
 
   for (const t of taxRates) {
-    await prisma.taxRate.upsert({
-      where: {
-        id: `${t.country}-${t.province ?? "national"}-${t.taxType}`,
-      },
-      update: { rate: t.rate, source: t.source },
-      create: { ...t, verifiedAt: now },
-    }).catch(async () => {
-      // Si conflit sur ID généré, créer directement
-      const existing = await prisma.taxRate.findFirst({
-        where: { country: t.country, province: t.province, taxType: t.taxType },
-      });
-      if (!existing) {
-        await prisma.taxRate.create({ data: { ...t, verifiedAt: now } });
-      }
+    const existing = await prisma.taxRate.findFirst({
+      where: { country: t.country, province: t.province ?? null, taxType: t.taxType },
     });
+    if (existing) {
+      await prisma.taxRate.update({ where: { id: existing.id }, data: { rate: t.rate, source: t.source } });
+    } else {
+      await prisma.taxRate.create({ data: { ...t, verifiedAt: now } });
+    }
   }
 
   console.log(`✅ ${taxRates.length} taux de taxes seedés`);
