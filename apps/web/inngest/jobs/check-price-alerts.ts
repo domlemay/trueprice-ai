@@ -1,5 +1,5 @@
 import { inngest } from "@trueprice-ai/shared";
-import { prisma } from "@trueprice-ai/db";
+import { prisma, createNotification } from "@trueprice-ai/db";
 import { sendEmail } from "@/lib/email";
 import { PriceAlertEmail } from "@/emails/PriceAlertEmail";
 import * as React from "react";
@@ -82,6 +82,15 @@ export const checkPriceAlerts = inngest.createFunction(
         console.log(
           `[check-price-alerts] alerte ${alert.id} déclenchée — ${alert.product.name} @ ${match.truePriceTotal} ${alert.currency}`,
         );
+
+        // Notification in-app
+        await createNotification({
+          userId: alert.user.id,
+          type:   "price_alert",
+          title:  `Alerte prix — ${alert.product.name}`,
+          body:   `Prix atteint : ${Number(match.truePriceTotal).toLocaleString("fr-CA")} ${alert.currency} sur ${match.marketplace?.name ?? "—"}`,
+          link:   "/dashboard/alertes",
+        });
 
         // Notification email (si préférence activée)
         const pref = await prisma.notificationPreference.findFirst({

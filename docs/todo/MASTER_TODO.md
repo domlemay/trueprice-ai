@@ -248,6 +248,10 @@
 - ✅ `lib/duties.ts` — franchise 20 $ CAD, frais courtage DHL/UPS/FedEx par tranche
 - ✅ `lib/tax-rates.ts` — toutes provinces CA, 50 États US, EU — JSON statique
 - ✅ `packages/db/src/queries/searches.ts` — CRUD searches + quota check + déduplication
+- ✅ `OfferCard` — badge MEILLEUR (halo cyan), badge PRIME, badge RUPTURE, segment bar, sort par `truePriceTotal`
+- ✅ `OfferCard` — bouton ♡ Favori (POST /api/favorites), lien ExternalLink vers produit
+- ✅ `OfferCard` — prix barré `priceOriginal` si différent de `priceCurrent`
+- ✅ Limitation par plan + compteur usage (x / 10 recherches ce mois) dans l'UI
 - ⏳ Seed BD `Marketplace` — Amazon.ca/.com, Best Buy CA/US, Apple CA/US (bloquant pour offres non-null)
 - [ ] `lib/input-parsers.ts` — détection ASIN/SKU/URL/UPC depuis la query
 - [ ] Sélecteur adresse de livraison dans la barre de recherche
@@ -258,35 +262,29 @@
   - Pickup en magasin (si `Marketplace.supportsPickup`)
   - Instacart (si `Marketplace.supportsInstacart`)
   - DoorDash (si applicable)
-- [ ] Affichage résultats
-  - Segment bar horizontal (cyan = base, bleu = livraison, vert = taxes, ambre = douanes)
-  - Meilleure offre mise en avant (halo cyan + badge MEILLEUR)
-  - Sort par `truePriceTotal` ascendant
-  - Filtre : en stock seulement, livraison directe seulement
-- [ ] Limitation par plan (garde dans l'endpoint + message upgrade dans l'UI)
-- [ ] Compteur usage dans le dashboard (x / 10 recherches ce mois)
+- [ ] Filtre : en stock seulement, livraison directe seulement
 
-### 2E — Rabais & Promotions ⏳ ★ CRUCIAL
+### 2E — Rabais & Promotions ✅
 
-> `ProductOffer` → `Discount[]` — 7 types à détecter et afficher.
+> `ProductOffer` → `Discount[]` — 7 types détectés et affichés.
 
 - [ ] `lib/discounts.ts` — `applyDiscounts(offer, userContext)` → `priceFinal`
   - Identifier rabais auto-appliqués (`isAutoApplied: true`) → toujours appliqués
   - Identifier rabais conditionnels (membership, qty, bundle)
   - Calculer `priceAfterBestDiscount` = priceCurrent - rabais cumulables applicables
   - Avertir si meilleur prix nécessite condition non remplie (pas membre Prime)
-- [ ] Affichage UI par type :
-  - AUTOMATIC : badge vert "Rabais automatique"
-  - COUPON : badge + code à copier (`code` affiché) + bouton copier
-  - CONDITIONAL : badge orange + condition explicite (`condition` + `minQty`)
-  - MEMBERSHIP : badge violet + icône membership + condition
-  - SALE : badge rouge + compte à rebours si `expiresAt` < 72h
-  - BUNDLE : badge bleu + détail du bundle
-  - CASHBACK : badge cyan + info différé
-- [ ] Indicateur "Se termine le [date]" amber si `expiresAt` < 72h
-- [ ] Prix barré `priceOriginal` si différent de `priceCurrent`
+- ✅ `DiscountBadge` — 7 types avec icônes distinctes et couleurs :
+  - AUTOMATIC : badge vert + icône Zap
+  - COUPON : badge jaune + code à copier + bouton copier (feedback Check 2s)
+  - CONDITIONAL : badge orange + icône ShoppingBag + condition explicite
+  - MEMBERSHIP : badge violet + icône Users + condition
+  - SALE : badge rose + icône Clock + alerte expiry si `expiresAt` < 72h
+  - BUNDLE : badge bleu + icône ShoppingBag
+  - CASHBACK : badge cyan + icône Gift
+- ✅ Indicateur "Se termine le [date]" amber si `expiresAt` < 72h
+- ✅ Prix barré `priceOriginal` si différent de `priceCurrent`
+- ✅ Note si rabais nécessite action (`isAutoApplied = false`) — "⚠ Certains rabais nécessitent une action avant de passer à la caisse."
 - [ ] `priceLowest30d` affiché pour contexte (plus bas sur 30 jours)
-- [ ] Note si rabais nécessite action (`isAutoApplied = false`) — ex: "Cliquez Coupon avant d'acheter"
 
 ### 2F — Catalogue produits ⏳ 🔒 (dépend 3A)
 
@@ -311,7 +309,7 @@
 - ✅ `app/api/favorites/route.ts` — GET list + POST create
 - ✅ `app/api/favorites/[id]/route.ts` — DELETE + PATCH tags
 - ✅ `app/dashboard/favoris/page.tsx` + `FavorisClient.tsx` — grille favoris, suppression, lien recherche, tags
-- [ ] Bouton "Favori" ♡ sur chaque carte résultat de recherche (lier au POST /api/favorites)
+- ✅ Bouton "Favori" ♡ sur chaque `OfferCard` (POST /api/favorites, toggle visuel rose)
 - [ ] Listes produits (`ProductList`)
   - Page `/dashboard/listes`
   - Créer liste (nom, type : STANDARD / RECURRING / PROJECT, tags)
@@ -319,16 +317,16 @@
 - [ ] Listes récurrentes (RECURRING) — cron `run-recurring-lists`
 - [ ] Listes projet (PROJECT) — somme `truePriceTotal` cumulée
 
-### 2H — Alertes prix & stock 🔄
+### 2H — Alertes prix & stock ✅
 
 - ✅ `packages/db/src/queries/alerts.ts` — `ALERT_LIMITS`, quota check, CRUD price + stock alerts
 - ✅ `app/api/alerts/route.ts` — GET (price + stock) + POST avec quota
 - ✅ `app/api/alerts/[id]/route.ts` — DELETE + PATCH (toggle actif)
 - ✅ `app/dashboard/alertes/page.tsx` + `AlertesClient.tsx` — UI complète (toggle, delete, empty states, plan badge)
-- [ ] Job cron `check-price-alerts` — vérif toutes les heures → voir JOBS
-- [ ] Job cron `check-stock-alerts` — vérif toutes les heures → voir JOBS
-- [ ] Envoi notification quand déclenché : `triggeredAt = now()` + `isActive = false`
-  - Canal selon `NotificationPreference` : email (Resend), in-app, SMS, push
+- ✅ Job cron `check-price-alerts` — vérif toutes les heures (`0 * * * *`)
+- ✅ Job cron `check-stock-alerts` — vérif toutes les heures (`30 * * * *`, décalé)
+- ✅ Notification in-app créée quand déclenché (`type: price_alert` / `stock_alert`)
+- ✅ Notification email envoyée si `NotificationPreference` activée (Resend)
 
 ### 2I — Partage & Collaboration ⏳ 🔒 (dépend 2D)
 
@@ -598,32 +596,35 @@
 
 > Système de notification multi-canal unifié. Tous les envois passent par `lib/notifications.ts`.
 
-### 6A — Service email ⏳ ★ PROCHAINE ÉTAPE
+### 6A — Service email 🔄
 
 - ✅ Service choisi : **Resend** (100 emails/j gratuit, React Email, domaine custom)
 - [ ] Créer compte Resend + ajouter `RESEND_API_KEY` dans `.env`
 - [ ] Configurer domaine `@truepricai.ca` dans Resend (SPF, DKIM, DMARC)
-- [ ] `lib/email.ts` — `sendEmail(to, template, data)` via Resend SDK
-- [ ] Templates email (React Email) :
-  - Alerte prix déclenchée ← priorité (lié à 2H)
-  - Alerte stock déclenchée ← priorité (lié à 2H)
-  - Invitation organisation
-  - Fin d'essai imminente (3j avant)
-  - Paiement échoué
-  - Bienvenue post-inscription
-  - Confirmation suppression compte (RGPD)
-  - Export données prêt
-  - Rapport hebdomadaire / mensuel
-  - Partage de résultat reçu
-  - Changelog (si PREMIUM+)
+- ✅ `lib/email.ts` — `sendEmail({ to, subject, react })` via Resend SDK (graceful no-op si clé absente)
+- ✅ Templates email (React Email) :
+  - ✅ `PriceAlertEmail.tsx` — alerte prix déclenchée (marketplace, prix cible vs prix réel, lien produit)
+  - ✅ `StockAlertEmail.tsx` — retour en stock (marketplace, lien produit)
+  - ✅ `TrialEndingEmail.tsx` — fin d'essai imminente (3j avant, CTA upgrade)
+  - [ ] Invitation organisation
+  - [ ] Paiement échoué
+  - [ ] Bienvenue post-inscription
+  - [ ] Confirmation suppression compte (RGPD)
+  - [ ] Export données prêt
+  - [ ] Rapport hebdomadaire / mensuel
+  - [ ] Partage de résultat reçu
+  - [ ] Changelog (si PREMIUM+)
 
-### 6B — Notifications in-app ⏳
+### 6B — Notifications in-app ✅
 
-- [ ] `NotificationPreference` consultée avant tout envoi
-- [ ] Cloche 🔔 dans navbar avec badge nombre non lus
-- [ ] Panel notifications coulissant (liste chronologique)
-- [ ] Types : alerte prix, alerte stock, partage reçu, invitation, rapport prêt, changelog
-- [ ] Marquer lu / tout marquer lu
+- ✅ `NotificationPreference` consultée avant tout envoi email (jobs price_alert + stock_alert)
+- ✅ Modèle `Notification` BD + `packages/db/src/queries/notifications.ts` (`createNotification`, `getUserNotifications`, `getUnreadCount`, `markAllNotificationsRead`, `markNotificationRead`)
+- ✅ `app/api/notifications/route.ts` — GET `{ notifications, unreadCount }` + PATCH mark-all-read
+- ✅ `app/api/notifications/[id]/route.ts` — PATCH mark-one-read
+- ✅ Cloche 🔔 dans `DashboardNav` avec badge rouge (count, "9+" si >9), polling 60s
+- ✅ Panel notifications : liste chronologique, icône par type, date fr-CA, point unread, lien cliquable
+- ✅ Types implémentés : `price_alert`, `stock_alert`, `trial_ending`, `invitation`, `default`
+- ✅ Tout marquer lu au moment d'ouvrir le panel (PATCH optimiste + API)
 
 ### 6C — SMS ⏳ (optionnel, Phase ultérieure)
 
@@ -777,8 +778,16 @@
 | `send-trial-ending-emails` | Quotidien | Email si `trialEndsAt` dans 3 jours |
 
 - ✅ Service choisi : **Inngest** (crons + scheduled functions, serverless-native)
-- ⏳ `apps/web/inngest/jobs/` — fichiers cron Inngest (à implémenter par priorité)
-- [ ] Logging de chaque exécution (`UsageLog` action = "cron:*")
+- ✅ `apps/web/inngest/jobs/refresh-exchange-rates.ts` — Frankfurter ECB, persist BD
+- ✅ `apps/web/inngest/jobs/check-price-alerts.ts` — notification in-app + email Resend
+- ✅ `apps/web/inngest/jobs/check-stock-alerts.ts` — notification in-app + email Resend
+- ✅ `apps/web/inngest/jobs/reset-search-counts.ts` — reset mensuel `searchCountMonth`
+- ✅ `apps/web/inngest/jobs/expire-trial-plans.ts` — rétrogradation FREE si essai expiré
+- ✅ `apps/web/inngest/jobs/clean-expired-searches.ts` — purge `PriceSearch` expirées
+- ✅ `apps/web/inngest/jobs/gdpr-delete-users.ts` — suppression RGPD J+30
+- ✅ `apps/web/inngest/jobs/send-trial-ending-emails.ts` — email 3j avant fin d'essai
+- ✅ Tous enregistrés dans `app/api/inngest/route.ts`
+- ✅ Logging `UsageLog` dans les jobs de déclenchement d'alertes
 - [ ] Alertes admin si job échoue 3× de suite
 
 ---
@@ -794,8 +803,9 @@
 - ✅ Relations bidirectionnelles vérifiées
 - ✅ `db:generate` — Prisma Client généré (v6.19.3)
 - ✅ `db:push` — tables créées sur Neon (neondb, us-east-1, 5,75s)
-- ✅ `packages/db/src/index.ts` — exports + singleton client (queries users, orgs, subscriptions, searches, favorites, alerts)
+- ✅ `packages/db/src/index.ts` — exports + singleton client (queries users, orgs, subscriptions, searches, favorites, alerts, notifications)
 - ✅ `packages/db/src/queries/` — helpers par domaine complets
+- ✅ Modèle `Notification` ajouté — `userId`, `type`, `title`, `body`, `link?`, `isRead`, `createdAt` + indexes
 - ⏳ Seed `Marketplace` — Amazon.ca/.com, Best Buy CA/US, Apple CA/US (bloquant pour `marketplaceId` non-null)
 - ⏳ Seed `TaxRate` + `DutyRate` — taux officiels (déjà dans `lib/tax-rates.ts` JSON statique)
 - ⏳ `npm run db:migrate` — migration versionnée (avant production)

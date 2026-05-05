@@ -1,5 +1,5 @@
 import { inngest } from "@trueprice-ai/shared";
-import { prisma } from "@trueprice-ai/db";
+import { prisma, createNotification } from "@trueprice-ai/db";
 import { sendEmail } from "@/lib/email";
 import { StockAlertEmail } from "@/emails/StockAlertEmail";
 import * as React from "react";
@@ -78,6 +78,15 @@ export const checkStockAlerts = inngest.createFunction(
         console.log(
           `[check-stock-alerts] alerte ${alert.id} déclenchée — ${alert.product.name} en stock sur ${mktName}`,
         );
+
+        // Notification in-app
+        await createNotification({
+          userId: alert.user.id,
+          type:   "stock_alert",
+          title:  `Retour en stock — ${alert.product.name}`,
+          body:   `Disponible sur ${mktName}`,
+          link:   "/dashboard/alertes",
+        });
 
         // Notification email
         const pref = await prisma.notificationPreference.findFirst({

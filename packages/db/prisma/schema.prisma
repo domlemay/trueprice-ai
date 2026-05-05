@@ -207,6 +207,7 @@ model User {
   changelogs           ChangelogRead[]
   preferredSites       UserPreferredSite[]
   blockedSites         UserBlockedSite[]
+  notifications        Notification[]
 
   @@map("users")
 }
@@ -1210,6 +1211,26 @@ model Report {
 }
 
 // ─── USAGE & AUDIT ────────────────────────────────────────────────────────────
+
+// ─── NOTIFICATIONS IN-APP ────────────────────────────────────────────────────
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  type      String   // "price_alert" | "stock_alert" | "trial_ending" | "invitation" | "report_ready"
+  title     String
+  body      String
+  link      String?  // URL relative vers le dashboard
+
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([userId, isRead])
+  @@index([userId, createdAt])
+  @@map("notifications")
+}
 
 model UsageLog {
   id             String        @id @default(cuid())
