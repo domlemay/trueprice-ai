@@ -16,7 +16,8 @@ export async function GET(
   if (!search) return NextResponse.json({ error: "Recherche introuvable" }, { status: 404 });
   if (search.userId !== user.id) return NextResponse.json({ error: "Accès refusé" }, { status: 403 });
 
-  const status = search.offers.length > 0 ? "completed" : "pending";
+  const ageMs  = Date.now() - new Date(search.createdAt).getTime();
+  const status = (search.offers.length > 0 || ageMs > 18_000) ? "completed" : "pending";
 
   return NextResponse.json({ status, search });
 }

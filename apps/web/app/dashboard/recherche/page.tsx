@@ -13,17 +13,24 @@ export default async function RecherchePage() {
   });
   if (!user) redirect("/dashboard");
 
-  const recentSearches = await prisma.priceSearch.findMany({
-    where:   { userId: user.id },
-    orderBy: { createdAt: "desc" },
-    take:    10,
-    select: {
-      id: true, query: true, inputType: true,
-      bestTruePrice: true, bestOfferMarket: true,
-      createdAt: true,
-      _count: { select: { offers: true } },
-    },
-  });
+  const [recentSearches, addresses] = await Promise.all([
+    prisma.priceSearch.findMany({
+      where:   { userId: user.id },
+      orderBy: { createdAt: "desc" },
+      take:    10,
+      select: {
+        id: true, query: true, inputType: true,
+        bestTruePrice: true, bestOfferMarket: true,
+        createdAt: true,
+        _count: { select: { offers: true } },
+      },
+    }),
+    prisma.userAddress.findMany({
+      where:   { userId: user.id },
+      orderBy: [{ isDefault: "desc" }, { createdAt: "asc" }],
+      select:  { id: true, label: true, city: true, province: true, country: true, isDefault: true },
+    }),
+  ]);
 
   const PLAN_LIMITS: Record<string, number> = {
     FREE: 10, PREMIUM: 200, ENTERPRISE: -1, ENTERPRISE_PRO: -1,
@@ -35,10 +42,11 @@ export default async function RecherchePage() {
       plan={user.plan}
       searchCountMonth={user.searchCountMonth}
       searchLimit={searchLimit}
+      initialAddresses={addresses}
       recentSearches={recentSearches.map((s) => ({
         ...s,
         bestTruePrice: s.bestTruePrice ? Number(s.bestTruePrice) : null,
-        createdAt: s.createdAt.toISOString(),
+        createdAt:     s.createdAt.toISOString(),
       }))}
     />
   );

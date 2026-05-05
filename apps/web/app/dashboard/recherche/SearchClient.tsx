@@ -4,59 +4,92 @@ import { useState, useTransition, useEffect, useRef } from "react";
 import {
   Search, Loader2, History, ArrowRight, TrendingUp,
   Heart, HeartOff, Copy, Check, ExternalLink, Tag,
-  Zap, Users, ShoppingBag, Gift, Clock,
+  Zap, Users, ShoppingBag, Gift, Clock, MapPin,
+  Store, ChevronDown, Truck, Package2, ShoppingCart,
+  TrendingDown,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+// ── Constantes ────────────────────────────────────────────────────────────────
+
+const MARKETPLACES = [
+  { slug: "amazon.ca",   label: "Amazon.ca",    flag: "🇨🇦" },
+  { slug: "amazon.com",  label: "Amazon.com",   flag: "🇺🇸" },
+  { slug: "bestbuy.ca",  label: "Best Buy CA",  flag: "🇨🇦" },
+  { slug: "bestbuy.com", label: "Best Buy US",  flag: "🇺🇸" },
+  { slug: "apple.ca",    label: "Apple CA",     flag: "🇨🇦" },
+  { slug: "apple.com",   label: "Apple US",     flag: "🇺🇸" },
+  { slug: "walmart.ca",  label: "Walmart.ca",   flag: "🇨🇦" },
+  { slug: "walmart.com", label: "Walmart.com",  flag: "🇺🇸" },
+  { slug: "costco.ca",   label: "Costco CA",    flag: "🇨🇦" },
+];
+
+const DELIVERY_MODE_LABELS: Record<string, { label: string; icon: React.ComponentType<{ size?: number; strokeWidth?: number; className?: string }> }> = {
+  STANDARD:  { label: "Livraison",  icon: Truck         },
+  PICKUP:    { label: "Ramassage",  icon: Store         },
+  INSTACART: { label: "Instacart",  icon: ShoppingCart  },
+};
+
 // ── Types ─────────────────────────────────────────────────────────────────────
 
+type Address = {
+  id:         string;
+  label:      string;
+  city:       string;
+  province:   string;
+  country:    string;
+  isDefault:  boolean;
+};
+
 type RecentSearch = {
-  id: string;
-  query: string;
-  inputType: string;
-  bestTruePrice: number | null;
+  id:              string;
+  query:           string;
+  inputType:       string;
+  bestTruePrice:   number | null;
   bestOfferMarket: string | null;
-  createdAt: string;
-  _count: { offers: number };
+  createdAt:       string;
+  _count:          { offers: number };
 };
 
 type Discount = {
-  id: string;
-  type: "AUTOMATIC" | "COUPON" | "CONDITIONAL" | "MEMBERSHIP" | "SALE" | "BUNDLE" | "CASHBACK";
-  label: string;
-  amountOff: number | null;
-  percentOff: number | null;
-  code: string | null;
-  condition: string | null;
-  expiresAt: string | null;
+  id:            string;
+  type:          "AUTOMATIC" | "COUPON" | "CONDITIONAL" | "MEMBERSHIP" | "SALE" | "BUNDLE" | "CASHBACK";
+  label:         string;
+  amountOff:     number | null;
+  percentOff:    number | null;
+  code:          string | null;
+  condition:     string | null;
+  expiresAt:     string | null;
   isAutoApplied: boolean;
 };
 
 type Offer = {
-  id: string;
-  sellerName: string | null;
-  sellerCountry: string;
-  priceCurrent: number;
-  priceOriginal: number;
-  currency: string;
-  productUrl: string | null;
-  shippingCost: number | null;
-  truePriceTotal: number | null;
-  taxAmount: number | null;
-  dutyAmount: number | null;
-  brokerageFee: number | null;
-  inStock: boolean;
-  isPrime: boolean;
-  marketplace: { name: string; slug: string } | null;
-  discounts: Discount[];
+  id:              string;
+  sellerName:      string | null;
+  sellerCountry:   string;
+  priceCurrent:    number;
+  priceOriginal:   number;
+  priceLowest30d:  number | null;
+  currency:        string;
+  productUrl:      string | null;
+  shippingCost:    number | null;
+  truePriceTotal:  number | null;
+  taxAmount:       number | null;
+  dutyAmount:      number | null;
+  brokerageFee:    number | null;
+  inStock:         boolean;
+  isPrime:         boolean;
+  deliveryMode:    string | null;
+  marketplace:     { name: string; slug: string } | null;
+  discounts:       Discount[];
 };
 
 type SearchResult = {
   status: "pending" | "completed";
   search: {
-    id: string;
-    query: string;
-    offers: Offer[];
+    id:        string;
+    query:     string;
+    offers:    Offer[];
     aiSummary: string | null;
   };
 };
@@ -68,11 +101,13 @@ export function SearchClient({
   searchCountMonth,
   searchLimit,
   recentSearches,
+  initialAddresses,
 }: {
-  plan: string;
-  searchCountMonth: number;
-  searchLimit: number;
-  recentSearches: RecentSearch[];
+  plan:              string;
+  searchCountMonth:  number;
+  searchLimit:       number;
+  recentSearches:    RecentSearch[];
+  initialAddresses:  Address[];
 }) {
   const [query, setQuery]   = useState("");
   const [result, setResult] = useState<SearchResult | null>(null);
@@ -81,20 +116,61 @@ export function SearchClient({
   const [polling, setPolling]      = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  // Adresses
+  const [addresses, setAddresses]         = useState<Address[]>(initialAddresses);
+  const [selectedAddressId, setSelectedAddressId] = useState<string | undefined>(
+    initialAddresses.find((a) => a.isDefault)?.id,
+  );
+  const [showAddressPanel, setShowAddressPanel] = useState(false);
+
+  // Marketplace selector
+  const [selectedSlugs, setSelectedSlugs]       = useState<Set<string>>(new Set(MARKETPLACES.map((m) => m.slug)));
+  const [showMktPanel, setShowMktPanel]          = useState(false);
+
   useEffect(() => {
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
   }, []);
 
-  function handleSearch() {
-    if (!query.trim() || pending) return;
+  // Recharger les adresses si elles changent côté serveur
+  useEffect(() => {
+    setAddresses(initialAddresses);
+    if (!selectedAddressId && initialAddresses.length > 0) {
+      setSelectedAddressId(initialAddresses.find((a) => a.isDefault)?.id);
+    }
+  }, [initialAddresses, selectedAddressId]);
+
+  function toggleMarketplace(slug: string) {
+    setSelectedSlugs((prev) => {
+      const next = new Set(prev);
+      if (next.has(slug)) {
+        if (next.size > 1) next.delete(slug); // garder au moins 1
+      } else {
+        next.add(slug);
+      }
+      return next;
+    });
+  }
+
+  function handleSearch(overrideQuery?: string) {
+    const q = (overrideQuery ?? query).trim();
+    if (!q || pending) return;
+    if (overrideQuery) setQuery(overrideQuery);
     setError(null);
     setResult(null);
 
+    const marketplaceSlugs = selectedSlugs.size < MARKETPLACES.length
+      ? [...selectedSlugs]
+      : undefined; // undefined = toutes
+
     startTransition(async () => {
       const res = await fetch("/api/search", {
-        method: "POST",
+        method:  "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query: query.trim() }),
+        body:    JSON.stringify({
+          query:            q,
+          addressId:        selectedAddressId,
+          marketplaceSlugs,
+        }),
       });
 
       if (res.status === 429) {
@@ -119,7 +195,7 @@ export function SearchClient({
       pollRef.current = setInterval(async () => {
         attempts++;
         await loadResult(searchId);
-        if (attempts >= 15) {
+        if (attempts >= 8) {
           clearInterval(pollRef.current!);
           setPolling(false);
         }
@@ -141,6 +217,9 @@ export function SearchClient({
   const usagePercent = searchLimit > 0
     ? Math.min((searchCountMonth / searchLimit) * 100, 100)
     : 0;
+
+  const selectedAddress = addresses.find((a) => a.id === selectedAddressId);
+  const allMktSelected  = selectedSlugs.size === MARKETPLACES.length;
 
   return (
     <div className="max-w-3xl">
@@ -180,7 +259,7 @@ export function SearchClient({
       )}
 
       {/* Barre de recherche */}
-      <div className="flex gap-3 mb-8">
+      <div className="flex gap-3 mb-3">
         <div className="relative flex-1">
           <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
           <input
@@ -193,13 +272,145 @@ export function SearchClient({
           />
         </div>
         <button
-          onClick={handleSearch}
+          onClick={() => handleSearch()}
           disabled={pending || !query.trim()}
           className="flex items-center gap-2 bg-tp-cyan-500 text-tp-navy-700 font-semibold text-sm px-5 py-3 rounded-xl hover:-translate-y-0.5 hover:shadow-tp-glow transition-all disabled:opacity-60 disabled:translate-y-0 shrink-0"
         >
           {pending ? <Loader2 size={16} className="animate-spin" /> : <Search size={16} />}
           Comparer
         </button>
+      </div>
+
+      {/* Options : adresse + marketplaces */}
+      <div className="flex gap-2 mb-6 flex-wrap">
+
+        {/* Sélecteur d'adresse */}
+        <div className="relative">
+          <button
+            onClick={() => { setShowAddressPanel((v) => !v); setShowMktPanel(false); }}
+            className={cn(
+              "flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border transition-colors",
+              showAddressPanel
+                ? "border-tp-cyan-500/50 bg-tp-cyan-500/10 text-tp-cyan-500"
+                : "border-tp-cyan-500/15 bg-tp-navy-card text-slate-400 hover:border-tp-cyan-500/30 hover:text-slate-300",
+            )}
+          >
+            <MapPin size={12} strokeWidth={1.75} />
+            <span>
+              {selectedAddress
+                ? `${selectedAddress.city}, ${selectedAddress.province}`
+                : "Adresse de livraison"}
+            </span>
+            <ChevronDown size={11} className={cn("transition-transform", showAddressPanel && "rotate-180")} />
+          </button>
+
+          {showAddressPanel && (
+            <div className="absolute top-full left-0 mt-1 w-64 z-20 rounded-xl border border-tp-cyan-500/20 bg-tp-navy-700 shadow-xl">
+              <div className="p-2 space-y-1">
+                <button
+                  onClick={() => { setSelectedAddressId(undefined); setShowAddressPanel(false); }}
+                  className={cn(
+                    "w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-left transition-colors",
+                    !selectedAddressId
+                      ? "bg-tp-cyan-500/10 text-tp-cyan-500"
+                      : "text-slate-400 hover:bg-tp-navy-600/60 hover:text-slate-300",
+                  )}
+                >
+                  <MapPin size={12} strokeWidth={1.75} />
+                  Géolocalisation automatique
+                </button>
+
+                {addresses.map((addr) => (
+                  <button
+                    key={addr.id}
+                    onClick={() => { setSelectedAddressId(addr.id); setShowAddressPanel(false); }}
+                    className={cn(
+                      "w-full flex items-start gap-2 px-3 py-2 rounded-lg text-left transition-colors",
+                      selectedAddressId === addr.id
+                        ? "bg-tp-cyan-500/10 text-tp-cyan-500"
+                        : "text-slate-400 hover:bg-tp-navy-600/60 hover:text-slate-300",
+                    )}
+                  >
+                    <MapPin size={12} strokeWidth={1.75} className="mt-0.5 shrink-0" />
+                    <div>
+                      <p className="text-xs font-medium leading-none mb-0.5">{addr.label}</p>
+                      <p className="text-[11px] opacity-70">{addr.city}, {addr.province} {addr.country}</p>
+                    </div>
+                  </button>
+                ))}
+
+                {addresses.length === 0 && (
+                  <p className="text-xs text-slate-500 px-3 py-2">
+                    <a href="/dashboard/profil/adresses" className="text-tp-cyan-500 hover:underline">
+                      Ajouter une adresse
+                    </a>
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Sélecteur de marketplaces */}
+        <div className="relative">
+          <button
+            onClick={() => { setShowMktPanel((v) => !v); setShowAddressPanel(false); }}
+            className={cn(
+              "flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border transition-colors",
+              showMktPanel
+                ? "border-tp-cyan-500/50 bg-tp-cyan-500/10 text-tp-cyan-500"
+                : !allMktSelected
+                  ? "border-tp-cyan-500/40 bg-tp-cyan-500/8 text-tp-cyan-400"
+                  : "border-tp-cyan-500/15 bg-tp-navy-card text-slate-400 hover:border-tp-cyan-500/30 hover:text-slate-300",
+            )}
+          >
+            <Store size={12} strokeWidth={1.75} />
+            <span>
+              {allMktSelected
+                ? "Toutes les boutiques"
+                : `${selectedSlugs.size} boutique${selectedSlugs.size > 1 ? "s" : ""}`}
+            </span>
+            <ChevronDown size={11} className={cn("transition-transform", showMktPanel && "rotate-180")} />
+          </button>
+
+          {showMktPanel && (
+            <div className="absolute top-full left-0 mt-1 w-52 z-20 rounded-xl border border-tp-cyan-500/20 bg-tp-navy-700 shadow-xl">
+              <div className="p-2 space-y-0.5">
+                <button
+                  onClick={() => setSelectedSlugs(new Set(MARKETPLACES.map((m) => m.slug)))}
+                  className="w-full text-left text-xs px-3 py-1.5 rounded-lg text-slate-400 hover:bg-tp-navy-600/60 hover:text-tp-cyan-400 transition-colors"
+                >
+                  Tout sélectionner
+                </button>
+                <div className="my-1 border-t border-tp-cyan-500/10" />
+                {MARKETPLACES.map((mkt) => (
+                  <button
+                    key={mkt.slug}
+                    onClick={() => toggleMarketplace(mkt.slug)}
+                    className={cn(
+                      "w-full flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-xs text-left transition-colors",
+                      selectedSlugs.has(mkt.slug)
+                        ? "text-white bg-tp-navy-600/60"
+                        : "text-slate-500 hover:bg-tp-navy-600/40",
+                    )}
+                  >
+                    <div className={cn(
+                      "w-3.5 h-3.5 rounded border flex items-center justify-center shrink-0",
+                      selectedSlugs.has(mkt.slug)
+                        ? "bg-tp-cyan-500 border-tp-cyan-500"
+                        : "border-slate-600",
+                    )}>
+                      {selectedSlugs.has(mkt.slug) && (
+                        <Check size={9} className="text-tp-navy-700" strokeWidth={3} />
+                      )}
+                    </div>
+                    <span>{mkt.flag} {mkt.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Erreur */}
@@ -210,7 +421,7 @@ export function SearchClient({
       )}
 
       {/* Chargement */}
-      {(pending || polling) && !result && (
+      {(pending || polling) && !(result && result.search.offers.length > 0) && (
         <div className="rounded-xl border border-tp-cyan-500/15 bg-tp-navy-card p-10 text-center">
           <Loader2 size={32} className="text-tp-cyan-500 mx-auto mb-3 animate-spin" />
           <p className="text-white font-medium mb-1">Analyse en cours…</p>
@@ -219,7 +430,7 @@ export function SearchClient({
       )}
 
       {/* Résultats */}
-      {result?.status === "completed" && result.search.offers.length > 0 && (
+      {result && result.search.offers.length > 0 && (
         <SearchResults
           offers={result.search.offers}
           aiSummary={result.search.aiSummary}
@@ -228,7 +439,7 @@ export function SearchClient({
       )}
 
       {/* Aucun résultat */}
-      {result?.status === "completed" && result.search.offers.length === 0 && (
+      {!pending && !polling && result && result.search.offers.length === 0 && (
         <div className="rounded-xl border border-tp-cyan-500/15 bg-tp-navy-card p-10 text-center">
           <Search size={32} className="text-tp-cyan-500/30 mx-auto mb-3" strokeWidth={1.5} />
           <p className="text-white font-medium mb-1">Aucun résultat trouvé</p>
@@ -247,7 +458,7 @@ export function SearchClient({
             {recentSearches.map((s) => (
               <button
                 key={s.id}
-                onClick={() => setQuery(s.query)}
+                onClick={() => handleSearch(s.query)}
                 className="w-full flex items-center gap-4 px-4 py-3 rounded-xl border border-tp-cyan-500/15 bg-tp-navy-card hover:border-tp-cyan-500/35 transition-colors text-left"
               >
                 <Search size={14} className="text-slate-500 shrink-0" />
@@ -285,8 +496,8 @@ function SearchResults({
   aiSummary,
   searchQuery,
 }: {
-  offers: Offer[];
-  aiSummary: string | null;
+  offers:      Offer[];
+  aiSummary:   string | null;
   searchQuery: string;
 }) {
   return (
@@ -315,16 +526,20 @@ function OfferCard({
   isBest,
   searchQuery,
 }: {
-  offer: Offer;
-  isBest: boolean;
+  offer:       Offer;
+  isBest:      boolean;
   searchQuery: string;
 }) {
   const [favorited, setFavorited] = useState(false);
   const [favLoading, setFavLoading] = useState(false);
 
-  const hasDiscount = offer.discounts.length > 0;
+  const hasDiscount    = offer.discounts.length > 0;
   const manualDiscounts = offer.discounts.filter((d) => !d.isAutoApplied);
-  const isDiscounted = offer.priceOriginal > offer.priceCurrent + 0.01;
+  const isDiscounted   = offer.priceOriginal > offer.priceCurrent + 0.01;
+  const showLowest30d  = offer.priceLowest30d != null
+    && offer.priceLowest30d < offer.priceCurrent - 0.01;
+
+  const deliveryInfo = offer.deliveryMode ? DELIVERY_MODE_LABELS[offer.deliveryMode] : null;
 
   const fmt = (n: number | null) =>
     n != null ? n.toLocaleString("fr-CA", { style: "currency", currency: "CAD" }) : "—";
@@ -337,9 +552,9 @@ function OfferCard({
         setFavorited(false);
       } else {
         await fetch("/api/favorites", {
-          method: "POST",
+          method:  "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ searchQuery }),
+          body:    JSON.stringify({ searchQuery }),
         });
         setFavorited(true);
       }
@@ -379,6 +594,12 @@ function OfferCard({
             {!offer.inStock && (
               <span className="text-[9px] font-semibold tracking-wide text-amber-400 bg-amber-500/10 border border-amber-500/20 px-1.5 py-0.5 rounded">
                 RUPTURE
+              </span>
+            )}
+            {deliveryInfo && (
+              <span className="inline-flex items-center gap-1 text-[9px] text-slate-500 border border-tp-cyan-500/10 px-1.5 py-0.5 rounded">
+                <deliveryInfo.icon size={9} strokeWidth={1.75} />
+                {deliveryInfo.label}
               </span>
             )}
           </div>
@@ -444,6 +665,14 @@ function OfferCard({
         <span>Douanes/courtage : <span className="text-slate-300">{fmt((offer.dutyAmount ?? 0) + (offer.brokerageFee ?? 0))}</span></span>
       </div>
 
+      {/* Prix le plus bas 30 jours */}
+      {showLowest30d && (
+        <div className="mt-2 flex items-center gap-1.5 text-[11px] text-emerald-400">
+          <TrendingDown size={11} strokeWidth={1.75} />
+          <span>Plus bas (30 j) : <span className="font-semibold">{fmt(offer.priceLowest30d)}</span></span>
+        </div>
+      )}
+
       {/* Rabais */}
       {hasDiscount && (
         <div className="mt-3 pt-3 border-t border-tp-cyan-500/10 space-y-1.5">
@@ -469,7 +698,7 @@ const DISCOUNT_STYLES: Record<string, { icon: React.ComponentType<{ size?: numbe
   CONDITIONAL: { icon: ShoppingBag, color: "text-orange-400",  bg: "bg-orange-500/10",  border: "border-orange-500/20"  },
   MEMBERSHIP:  { icon: Users,       color: "text-purple-400",  bg: "bg-purple-500/10",  border: "border-purple-500/20"  },
   SALE:        { icon: Clock,       color: "text-rose-400",    bg: "bg-rose-500/10",    border: "border-rose-500/20"    },
-  BUNDLE:      { icon: ShoppingBag, color: "text-blue-400",    bg: "bg-blue-500/10",    border: "border-blue-500/20"    },
+  BUNDLE:      { icon: Package2,    color: "text-blue-400",    bg: "bg-blue-500/10",    border: "border-blue-500/20"    },
   CASHBACK:    { icon: Gift,        color: "text-tp-cyan-500", bg: "bg-tp-cyan-500/10", border: "border-tp-cyan-500/20" },
 };
 
@@ -526,17 +755,17 @@ function DiscountBadge({ discount }: { discount: Discount }) {
 
 function SegmentBar({ offer }: { offer: Offer }) {
   const total    = offer.truePriceTotal ?? 1;
-  const base     = ((offer.priceCurrent           / total) * 100).toFixed(1);
-  const shipping = (((offer.shippingCost   ?? 0)  / total) * 100).toFixed(1);
-  const tax      = (((offer.taxAmount      ?? 0)  / total) * 100).toFixed(1);
+  const base     = ((offer.priceCurrent            / total) * 100).toFixed(1);
+  const shipping = (((offer.shippingCost   ?? 0)   / total) * 100).toFixed(1);
+  const tax      = (((offer.taxAmount      ?? 0)   / total) * 100).toFixed(1);
   const duty     = ((((offer.dutyAmount ?? 0) + (offer.brokerageFee ?? 0)) / total) * 100).toFixed(1);
 
   return (
     <div className="flex h-1.5 rounded-full overflow-hidden gap-px">
-      <div className="rounded-full bg-tp-cyan-500" style={{ width: `${base}%`     }} title={`Base ${base}%`}        />
+      <div className="rounded-full bg-tp-cyan-500" style={{ width: `${base}%`     }} title={`Base ${base}%`}         />
       <div className="rounded-full bg-blue-500"    style={{ width: `${shipping}%` }} title={`Livraison ${shipping}%`} />
-      <div className="rounded-full bg-emerald-500" style={{ width: `${tax}%`      }} title={`Taxes ${tax}%`}         />
-      <div className="rounded-full bg-amber-500"   style={{ width: `${duty}%`     }} title={`Douanes ${duty}%`}      />
+      <div className="rounded-full bg-emerald-500" style={{ width: `${tax}%`      }} title={`Taxes ${tax}%`}          />
+      <div className="rounded-full bg-amber-500"   style={{ width: `${duty}%`     }} title={`Douanes ${duty}%`}       />
     </div>
   );
 }

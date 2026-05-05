@@ -227,26 +227,24 @@
 - ✅ `OfferCard` — prix barré `priceOriginal` si différent de `priceCurrent`
 - ✅ Limitation par plan + compteur usage (x / 10 recherches ce mois) dans l'UI
 - ✅ Seed BD `Marketplace` — 12 marketplaces (Amazon CA/US/FR/DE/UK, Best Buy CA/US, Apple CA/US, Walmart CA/US, Costco CA)
-- [ ] `lib/input-parsers.ts` — détection ASIN/SKU/URL/UPC depuis la query
-- [ ] Sélecteur adresse de livraison dans la barre de recherche
-- [ ] Sélecteur marketplaces (filtrer selon marché user)
+- ✅ `lib/input-parsers.ts` — détection ASIN/URL/UPC/KEYWORD + extraction ASIN depuis URL Amazon
+- ✅ Sélecteur adresse de livraison dans la barre de recherche (dropdown, passe `addressId` → API résout province/pays)
+- ✅ Sélecteur marketplaces (9 boutiques, checkboxes, passe `marketplaceSlugs` au pipeline)
+- ✅ Modes de livraison affichés dans OfferCard (badge Standard / Pickup / Instacart selon `deliveryMode`)
+- ✅ **Recherches récentes** — clic déclenche la recherche directement (fix : `setQuery` seul ne suffisait pas)
+- ✅ **Polling robuste** — spinner stable du clic jusqu'aux résultats (fix condition `undefined === 0`)
+- ✅ **Aucun résultat** — message affiché après 16s si tous les scrapers échouent (fix : status "pending" ≠ terminé)
+- ✅ **Clés API** — placeholders `.env` vidés (`AMAZON_PA_*`, `BESTBUY_US_API_KEY`) → guards key-gated fonctionnels
+- ✅ Polling réduit à 8×2s = 16s (était 15×2s = 30s) + threshold API 18s
 - [ ] Vérification stock suffisant (`stockSufficient = stockQty >= searchQuantity`)
-- [ ] Modes de livraison à afficher par marketplace :
-  - Standard (expédition)
-  - Pickup en magasin (si `Marketplace.supportsPickup`)
-  - Instacart (si `Marketplace.supportsInstacart`)
-  - DoorDash (si applicable)
 - [ ] Filtre : en stock seulement, livraison directe seulement
+- [ ] Clés API à configurer pour activer les scrapers : `AMAZON_PA_ACCESS_KEY/SECRET/PARTNER_TAG_CA/US`, `BESTBUY_US_API_KEY`, `SERPAPI_KEY`
 
 ### 2E — Rabais & Promotions ✅
 
 > `ProductOffer` → `Discount[]` — 7 types détectés et affichés.
 
-- [ ] `lib/discounts.ts` — `applyDiscounts(offer, userContext)` → `priceFinal`
-  - Identifier rabais auto-appliqués (`isAutoApplied: true`) → toujours appliqués
-  - Identifier rabais conditionnels (membership, qty, bundle)
-  - Calculer `priceAfterBestDiscount` = priceCurrent - rabais cumulables applicables
-  - Avertir si meilleur prix nécessite condition non remplie (pas membre Prime)
+- ✅ `lib/discounts.ts` — `applyDiscounts(discounts)` → `{ priceFinal, autoAppliedSaving, bestConditionalSaving, priceWithBestConditional }`
 - ✅ `DiscountBadge` — 7 types avec icônes distinctes et couleurs :
   - AUTOMATIC : badge vert + icône Zap
   - COUPON : badge jaune + code à copier + bouton copier (feedback Check 2s)
@@ -258,7 +256,7 @@
 - ✅ Indicateur "Se termine le [date]" amber si `expiresAt` < 72h
 - ✅ Prix barré `priceOriginal` si différent de `priceCurrent`
 - ✅ Note si rabais nécessite action (`isAutoApplied = false`) — "⚠ Certains rabais nécessitent une action avant de passer à la caisse."
-- [ ] `priceLowest30d` affiché pour contexte (plus bas sur 30 jours)
+- ✅ `priceLowest30d` affiché dans `OfferCard` (badge vert TrendingDown si prix actuel > plus bas 30j)
 
 ### 2F — Catalogue produits 🔄
 
@@ -284,12 +282,14 @@
 - ✅ `app/api/favorites/[id]/route.ts` — DELETE + PATCH tags
 - ✅ `app/dashboard/favoris/page.tsx` + `FavorisClient.tsx` — grille favoris, suppression, lien recherche, tags
 - ✅ Bouton "Favori" ♡ sur chaque `OfferCard` (POST /api/favorites, toggle visuel rose)
-- [ ] Listes produits (`ProductList`)
-  - Page `/dashboard/listes`
-  - Créer liste (nom, type : STANDARD / RECURRING / PROJECT, tags)
-  - Ajouter/retirer items, drag-and-drop, partage équipe
-- [ ] Listes récurrentes (RECURRING) — cron `run-recurring-lists`
-- [ ] Listes projet (PROJECT) — somme `truePriceTotal` cumulée
+- ✅ Listes produits (`ProductList`) — page `/dashboard/listes` complète
+  - ✅ Créer liste (nom, type : STANDARD / RECURRING / PROJECT, description)
+  - ✅ Ajouter/retirer items (query ou productId, quantité, notes)
+  - ✅ API : `/api/lists` (GET/POST) + `/api/lists/[id]` (GET/PATCH/DELETE) + `/api/lists/[id]/items` (POST) + `/api/lists/[id]/items/[itemId]` (DELETE)
+  - ✅ `packages/db/src/queries/lists.ts` — `getUserLists`, `getListById`, `createList`, `updateList`, `deleteList`, `addItemToList`, `removeItemFromList`
+  - [ ] Listes récurrentes (RECURRING) — cron `run-recurring-lists`
+  - [ ] Listes projet (PROJECT) — somme `truePriceTotal` cumulée
+  - [ ] Drag-and-drop réordonnement des items
 
 ### 2H — Alertes prix & stock ✅
 
@@ -394,10 +394,12 @@
 - ✅ Fallback synchrone : si `INNGEST_SIGNING_KEY` absent → `void runScrapePipeline(...)` en background
 - ✅ `dev:inngest` script — `npx inngest-cli@latest dev -u http://localhost:3000/api/inngest` (port 8288)
 - ✅ `dev:full` script (root) — Next.js + Inngest CLI simultanément via `concurrently`
-- [ ] Cache Upstash Redis par SKU (`price:{marketplace}:{sku}` · TTL 6h) — Redis optionnel en dev
+- ✅ Cache Upstash Redis par marketplace+query (`scrape:{slug}:{query_norm}` · TTL 6h, graceful si Redis absent)
+- ✅ Filtering par marketplace (`marketplaceSlugs` param → pipeline ne lance que les scrapers sélectionnés)
+- ✅ Error tracking Redis par marketplace (`scrape:errors/total:{slug}:{hour_bucket}`, TTL 2h)
+- ✅ Job cron `monitor-marketplace-health` (toutes les 30min) — lit compteurs Redis, MAJ `Marketplace.status`, crée `MarketplaceStatusLog`
 - [ ] Crawlee (`PlaywrightCrawler`) pour Costco.ca / Walmart — Phase ultérieure
 - [ ] Firecrawl API fallback (`USE_FIRECRAWL=true`) — activer si volume > 50 scrapes/jour
-- [ ] Monitoring parsers (`MarketplaceStatusLog`) — `Marketplace.status = DEGRADED/DOWN` si taux échec > 10 %
 
 ### 3D — Parsing des rabais par source ⏳ 🔒 (dépend 3C)
 

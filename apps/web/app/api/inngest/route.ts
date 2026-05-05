@@ -8,7 +8,8 @@ import { resetSearchCounts }     from "@/inngest/jobs/reset-search-counts";
 import { expireTrialPlans }      from "@/inngest/jobs/expire-trial-plans";
 import { cleanExpiredSearches }  from "@/inngest/jobs/clean-expired-searches";
 import { gdprDeleteUsers }       from "@/inngest/jobs/gdpr-delete-users";
-import { sendTrialEndingEmails } from "@/inngest/jobs/send-trial-ending-emails";
+import { sendTrialEndingEmails }    from "@/inngest/jobs/send-trial-ending-emails";
+import { monitorMarketplaceHealth } from "@/inngest/jobs/monitor-marketplace-health";
 
 export const { GET, POST, PUT } = serve({
   client: inngest,
@@ -22,5 +23,6 @@ export const { GET, POST, PUT } = serve({
     cleanExpiredSearches,
     gdprDeleteUsers,
     sendTrialEndingEmails,
+    monitorMarketplaceHealth,
   ],
 });
