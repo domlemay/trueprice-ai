@@ -174,57 +174,32 @@
 
 ## PHASE 2 — Géolocalisation & Moteur de comparaison 🔄
 
-### 2A — Détection et préférences de localisation ⏳
+### 2A — Détection et préférences de localisation ✅
 
-- [ ] IP geolocation au chargement (`middleware.ts` ou composant serveur)
-  - Service : ipapi.co (gratuit jusqu'à 1 000/jour) ou MaxMind GeoLite2 (self-hosted)
-  - Extraire : `country`, `region` (province/état), `currency`
-  - Stocker en cookie de session signé
-  - Sauvegarder dans `User.preferredLocale` / `preferredCurrency` si connecté
-- [ ] Préférence manuelle dans `/dashboard/profil/localisation`
-  - Pays, devise, timezone, langue (fr-CA / en-CA)
-  - Priorité sur détection IP
-- ✅ `lib/geo.ts` — `getUserMarket(req)` → `{ country, currency, locale, taxRegion, timezone }` (headers Vercel/Cloudflare)
-- [ ] Adresses de livraison (`UserAddress`)
-  - CRUD adresses : domicile, bureau, entrepôt, autre
-  - Marquer défaut (`isDefault`)
-  - Sélection d'adresse au moment de la recherche (impact taxes + livraison)
+- ✅ IP geolocation via headers Vercel/Cloudflare — `middleware.ts` injecte cookie `tp_market` (country, province, currency, locale, timezone) à chaque requête (24h, non-écrasé si existant)
+- ✅ `lib/geo.ts` — `getUserMarket(req)` → `{ country, currency, locale, timezone }` (headers Vercel/Cloudflare)
+- ✅ `/dashboard/profil/page.tsx` — hub profil (avatar, plan badge, nav vers sous-sections)
+- ✅ `/dashboard/profil/localisation/` — sélecteur pays (raccourcis), devise, langue, fuseau horaire
+- ✅ `app/api/profile/location/route.ts` — PATCH préférences localisation (currency, locale, timezone)
+- ✅ Adresses de livraison (`UserAddress`) — CRUD complet
+  - ✅ `packages/db/src/queries/addresses.ts` — `getUserAddresses`, `createAddress`, `updateAddress`, `deleteAddress`, `setDefaultAddress`
+  - ✅ `app/api/addresses/route.ts` — GET + POST
+  - ✅ `app/api/addresses/[id]/route.ts` — PATCH + DELETE
+  - ✅ `/dashboard/profil/adresses/` — liste, ajout, édition, suppression, promotion par défaut
+- [ ] Sélection d'adresse au moment de la recherche (impact taxes + livraison)
 
-### 2B — Matrice marché & règles d'accès ⏳
+### 2B — Matrice marché & règles d'accès ✅
 
 > Ne jamais proposer une marketplace inaccessible depuis le pays de l'utilisateur.
 
-- [ ] `lib/markets.ts` — table `MARKET_MATRIX`
-  - Clé : `fromCountry` → liste `Marketplace.slug[]` accessibles
-  - Ex : CA → [amazon.ca, bestbuy.ca, costco.ca, apple.ca, walmart.ca, amazon.com, bestbuy.com…]
-  - Inclure règles livraison (livraison directe possible ? via transitaire ?)
-- [ ] `lib/duties.ts` — règles douanières par paire pays
-  - CUSMA CA↔US : franchise 20 $ CAD courrier, 800 $ USD dédouanement simplifié
-  - UE → US : TVA remboursable, droits importation
-  - Post-Brexit UK : droits spécifiques
-  - Lookup dans `DutyRate` BD (avec fallback table statique)
-- [ ] `lib/taxes.ts` — calcul taxes locales
-  - Lookup dans `TaxRate` BD par `(country, province)`
-  - CA/QC : GST 5 % + TVQ 9,975 % = 14,975 %
-  - CA/ON : HST 13 %
-  - CA/NB, NS, NL, PEI : HST 15 %
-  - CA/AB, BC, SK, MB : GST 5 % + taxe provinciale variable
-  - USA : Sales Tax par état (0 % à ~10 %) — lookup externe (TaxJar API?)
-  - EU : TVA 20 % France, 19 % Allemagne, etc.
-- [ ] `lib/tax-rates.ts` — config JSON statique provinces canadiennes (pas de SaaS)
-
-  ```ts
-  // taux officiels mai 2026 — mettre à jour manuellement si modification législative
-  const CA_RATES = { QC: { gst: 0.05, pst: 0.09975 }, ON: { hst: 0.13 }, AB: { gst: 0.05 }, … }
-  ```
-
-- ✅ Seed `TaxRate` BD — 25 taux (13 provinces CA, 5 états US principaux, 3 pays EU) — `packages/db/src/seed.ts`
-- ✅ Peuplement table `DutyRate` BD — 7 entrées (CUSMA US→CA/CA→US, EU→CA, UK→CA) — `packages/db/src/seed.ts`
-- [ ] Sites bloqués/préférés par organisation
-  - Interface `/dashboard/organisation/marketplaces`
-  - Cocher/décocher marketplaces actives pour l'org
-- [ ] Sites bloqués/préférés par user
-  - `/dashboard/profil/marketplaces` — personnalisation
+- ✅ `lib/markets.ts` — `MARKET_MATRIX` (CA/US/FR/DE/GB → slugs accessibles), `PROXY_REQUIRED`, `DIRECT_SHIP_TO_CA`
+  - Fonctions : `getAccessibleMarkets(country)`, `isMarketAccessible(country, slug)`, `canShipDirectlyToCA(slug)`
+- ✅ `lib/duties.ts` — CUSMA CA↔US : franchise 20 $ CAD, frais courtage DHL/UPS/FedEx par tranche
+- ✅ `lib/tax-rates.ts` — JSON statique toutes provinces CA + 50 états US + EU — `getTaxRate(country, province)`
+- ✅ Seed `TaxRate` BD — 25 taux (13 provinces CA, 5 états US principaux, 3 pays EU)
+- ✅ Seed `DutyRate` BD — 7 entrées (CUSMA US→CA/CA→US, EU→CA, UK→CA)
+- [ ] Sites bloqués/préférés par organisation (`/dashboard/organisation/marketplaces`)
+- [ ] Sites bloqués/préférés par user (`/dashboard/profil/marketplaces`)
 
 ### 2C — Taux de change ✅
 

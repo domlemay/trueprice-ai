@@ -8,8 +8,6 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const SCRAPERS_READY = true;
-
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 type RecentSearch = {
@@ -465,7 +463,7 @@ function OfferCard({
 
 // ── DiscountBadge ─────────────────────────────────────────────────────────────
 
-const DISCOUNT_STYLES: Record<string, { icon: React.ComponentType<{ size?: number; strokeWidth?: number }>; color: string; bg: string; border: string }> = {
+const DISCOUNT_STYLES: Record<string, { icon: React.ComponentType<{ size?: number; strokeWidth?: number; className?: string }>; color: string; bg: string; border: string }> = {
   AUTOMATIC:   { icon: Zap,         color: "text-emerald-400", bg: "bg-emerald-500/10", border: "border-emerald-500/20" },
   COUPON:      { icon: Tag,         color: "text-yellow-400",  bg: "bg-yellow-500/10",  border: "border-yellow-500/20"  },
   CONDITIONAL: { icon: ShoppingBag, color: "text-orange-400",  bg: "bg-orange-500/10",  border: "border-orange-500/20"  },
