@@ -25,3 +25,4 @@ export * from "./queries/favorites";
 export * from "./queries/alerts";
 export * from "./queries/notifications";
 export * from "./queries/addresses";
+export * from "./queries/products";

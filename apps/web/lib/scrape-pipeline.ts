@@ -1,10 +1,14 @@
 import { prisma } from "@trueprice-ai/db";
-import { searchBestBuyCA }     from "./scrapers/bestbuy-ca";
-import { searchBestBuyUS }     from "./scrapers/bestbuy-us";
+import { searchBestBuyCA }                from "./scrapers/bestbuy-ca";
+import { searchBestBuyUS }                from "./scrapers/bestbuy-us";
 import { searchAppleStoreCA, searchAppleStoreUS } from "./scrapers/apple-store";
-import { searchAmazonCA, searchAmazonUS }          from "./scrapers/amazon-pa";
-import { calculateTruePrice } from "./calculator";
-import type { ScrapedOffer } from "./scrapers/types";
+import { searchAmazonCA, searchAmazonUS }  from "./scrapers/amazon-pa";
+import { searchWalmartCA }                 from "./scrapers/walmart-ca";
+import { searchWalmartUS }                 from "./scrapers/walmart-us";
+import { searchCostcoCA }                  from "./scrapers/costco-ca";
+import { calculateTruePrice }              from "./calculator";
+import { linkOfferToProduct }              from "./product-catalog";
+import type { ScrapedOffer }               from "./scrapers/types";
 
 type Geo = { country: string; province: string; currency: string };
 
@@ -15,7 +19,7 @@ export async function runScrapePipeline(params: {
 }): Promise<{ searchId: string; offersCount: number }> {
   const { searchId, query, geo } = params;
 
-  // Step 1: scraping en parallèle
+  // Step 1: scraping en parallèle — 9 sources
   const results = await Promise.allSettled([
     searchBestBuyCA(query, 5),
     searchBestBuyUS(query, 5),
@@ -23,6 +27,9 @@ export async function runScrapePipeline(params: {
     searchAppleStoreUS(query, 3),
     searchAmazonCA(query, 5),
     searchAmazonUS(query, 5),
+    searchWalmartCA(query, 5),
+    searchWalmartUS(query, 5),
+    searchCostcoCA(query, 5),
   ]);
 
   const rawOffers: ScrapedOffer[] = [];
@@ -41,7 +48,7 @@ export async function runScrapePipeline(params: {
   });
   const mktMap = Object.fromEntries(marketplaces.map((m) => [m.slug, m.id]));
 
-  // Step 3: calculer vrai coût et sauvegarder les offres
+  // Step 3: calculer vrai coût, sauvegarder les offres, enregistrer catalog
   const userCtx = {
     country:  geo?.country  ?? "CA",
     province: geo?.province ?? "QC",
@@ -64,10 +71,12 @@ export async function runScrapePipeline(params: {
         userCtx,
       );
 
+      const mktId = mktMap[offer.marketplaceSlug] ?? null;
+
       const saved = await prisma.productOffer.create({
         data: {
           searchId,
-          marketplaceId: mktMap[offer.marketplaceSlug] ?? null,
+          marketplaceId: mktId,
           sellerName:    offer.sellerName,
           sellerCountry: offer.sellerCountry,
           currency:      offer.currency,
@@ -83,6 +92,7 @@ export async function runScrapePipeline(params: {
           brokerageFee:  calc.brokerageFee,
           truePriceTotal:calc.truePriceTotal,
           inStock:       offer.inStock,
+          isPrime:       offer.isPrime ?? false,
         },
       });
 
@@ -92,14 +102,17 @@ export async function runScrapePipeline(params: {
             offerId:       saved.id,
             type:          d.type as never,
             label:         d.label,
-            amountOff:     d.amount ?? null,
+            amountOff:     d.amount  ?? null,
             percentOff:    d.percent ?? null,
-            code:          d.code ?? null,
+            code:          d.code    ?? null,
             isAutoApplied: d.isAutoApplied,
             expiresAt:     d.expiresAt ?? null,
           })),
         });
       }
+
+      // Phase 2F: link offer to product catalog + record price history
+      await linkOfferToProduct(offer, saved.id, mktId);
 
       if (calc.truePriceTotal < bestTotal) {
         bestTotal  = calc.truePriceTotal;

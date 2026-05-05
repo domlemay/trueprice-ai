@@ -10,6 +10,12 @@ export type ScrapedOffer = {
   shippingCost?:   number; // 0 si offert, null si inconnu
   sku?:            string;
   discounts?:      ScrapedDiscount[];
+  // Product catalog fields (Phase 2F)
+  productName?:    string;
+  brand?:          string;
+  asin?:           string;
+  imageUrl?:       string;
+  isPrime?:        boolean;
 };
 
 export type ScrapedDiscount = {

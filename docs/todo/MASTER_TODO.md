@@ -216,7 +216,7 @@
 - ✅ `app/api/search/route.ts` — POST : quota → déduplication → create → Inngest/fallback sync
 - ✅ `app/api/search/[id]/route.ts` — GET : polling résultats par searchId
 - ✅ `inngest/scrape-search.ts` — Fonction `scrape/price-search` (retries: 3, délègue à `runScrapePipeline`)
-- ✅ `lib/scrape-pipeline.ts` — pipeline autonome (scraping 6 sources → résolution marketplace → calcul → save)
+- ✅ `lib/scrape-pipeline.ts` — pipeline autonome (scraping 9 sources → résolution marketplace → calcul → save → catalog)
 - ✅ `app/api/inngest/route.ts` — Endpoint Inngest
 - ✅ `lib/calculator.ts` — `calculateTruePrice()` complet (change + douanes CUSMA + taxes provinciales)
 - ✅ `lib/duties.ts` — franchise 20 $ CAD, frais courtage DHL/UPS/FedEx par tranche
@@ -260,22 +260,22 @@
 - ✅ Note si rabais nécessite action (`isAutoApplied = false`) — "⚠ Certains rabais nécessitent une action avant de passer à la caisse."
 - [ ] `priceLowest30d` affiché pour contexte (plus bas sur 30 jours)
 
-### 2F — Catalogue produits ⏳ 🔒 (dépend 3A)
+### 2F — Catalogue produits 🔄
 
 > Les produits sont créés à la volée lors du scraping, puis enrichis.
 
-- [ ] `lib/product-catalog.ts`
-  - `findOrCreateProduct(name, upc?, ean?)` — recherche par UPC/EAN d'abord, puis fuzzy name
-  - `createVariant(productId, asin, sku, attributes)` — créer variant si nouveau ASIN
-  - `mergeProducts(productId1, productId2)` — fusion doublons
+- ✅ `lib/product-catalog.ts` — `linkOfferToProduct(offer, offerId, marketplaceId)` — lie une offre scrapée au catalogue et enregistre PriceHistory
+- ✅ `packages/db/src/queries/products.ts` — `findOrCreateProduct`, `findOrCreateVariant`, `recordPriceHistory`, `getProductById`, `getProductWithPriceHistory`
+- ✅ `ScrapedOffer` étendu — champs `productName?`, `brand?`, `asin?`, `imageUrl?`, `isPrime?`
+- ✅ `scrape-pipeline.ts` — appel `linkOfferToProduct()` après chaque offre sauvegardée
+- ✅ `packages/db/src/index.ts` — export `queries/products`
 - [ ] Enrichissement produit via UPC lookup (UPCitemdb API ou Open Food Facts)
   - Remplir `brand`, `description`, `imageUrl`, `category` si absents
-- [ ] Catégorisation IA (`aiCategoryConfidence`) — GPT-4o assignation catégorie
+- [ ] `mergeProducts(productId1, productId2)` — fusion doublons
+- [ ] Catégorisation IA (`aiCategoryConfidence`) — Claude Sonnet assignation catégorie
   - Job asynchrone post-création produit
   - `category` + `subcategory` + `aiCategoryConfidence`
-- [ ] `PriceHistory` — enregistrer prix à chaque scraping
-  - `recordPriceHistory(variantId, marketplaceId, price, currency)`
-  - Utilisé pour `priceLowest30d`, graphique historique, alertes
+- [ ] `priceLowest30d` affiché dans l'UI (basé sur PriceHistory)
 
 ### 2G — Favoris & Listes produits 🔄
 
@@ -340,7 +340,7 @@
 
 ## PHASE 3 — Scraping & Sources de prix ⏳ ★
 
-### 3A — Méthodes d'acquisition ⏳
+### 3A — Méthodes d'acquisition 🔄
 
 > **Stratégie double-couche :** MVP = Crawlee (MIT, self-hosted) · Production = Firecrawl API (~19 USD/mois, zero-infra) · Découverte = SerpAPI + Exa.ai
 
@@ -355,6 +355,7 @@
 | **SerpAPI** Shopping | 100 req/mois gratuit | ⭐⭐⭐⭐ | Découverte prix |
 | **Exa.ai** | Pay-per-use | ⭐⭐⭐⭐ | Découverte sites |
 
+- ✅ `lib/scrapers/serpapi.ts` — client SerpAPI key-gated (`SERPAPI_KEY`), `searchSerpApiShopping(query, limit, country, marketplace)`, retourne [] si clé absente
 - [ ] Créer comptes affiliés Amazon PA API (CA + US + EU)
 - [ ] Créer clés : Best Buy CA, Best Buy US, Walmart Open API, SerpAPI, Exa.ai
 - [ ] Créer compte Firecrawl (activer en prod quand volume > 50 scrapes/jour)
@@ -366,16 +367,16 @@
 
 - ✅ Amazon.ca — `lib/scrapers/amazon-pa.ts` (PA API, Sig V4 maison, key-gated)
 - ✅ Best Buy Canada — `lib/scrapers/bestbuy-ca.ts` (API JSON public)
-- [ ] Costco.ca — Crawlee/Playwright (pas d'API publique)
+- ✅ Costco.ca — `lib/scrapers/costco-ca.ts` (parse JSON-LD schema.org depuis HTML, graceful → [])
 - ✅ Apple Store Canada — `lib/scrapers/apple-store.ts` (JSON interne Apple, FAMILY_MAP 25+ regex)
-- [ ] Walmart.ca — Walmart Open API ou Crawlee fallback
+- ✅ Walmart.ca — `lib/scrapers/walmart-ca.ts` (parse `__NEXT_DATA__` depuis HTML, graceful → [])
 
 **USA :**
 
 - ✅ Amazon.com — `lib/scrapers/amazon-pa.ts` (`marketplace: "www.amazon.com"`)
 - ✅ Best Buy US — `lib/scrapers/bestbuy-us.ts` (key-gated `BESTBUY_US_API_KEY`)
 - ✅ Apple Store US — `lib/scrapers/apple-store.ts` (même fichier que CA)
-- [ ] Walmart.com — Walmart Open API (clé gratuite)
+- ✅ Walmart.com — `lib/scrapers/walmart-us.ts` (parse `__NEXT_DATA__` depuis HTML, graceful → [])
 
 **Europe :**
 
