@@ -163,6 +163,7 @@ export function SearchClient({
       : undefined; // undefined = toutes
 
     startTransition(async () => {
+      try {
       const res = await fetch("/api/search", {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
@@ -173,18 +174,20 @@ export function SearchClient({
         }),
       });
 
+      const isJson = res.headers.get("content-type")?.includes("application/json");
+
       if (res.status === 429) {
-        const data = await res.json();
-        setError(`Quota mensuel atteint (${data.used}/${data.limit} recherches). Passez à PREMIUM pour 200 recherches/mois.`);
+        const data = isJson ? await res.json() : {};
+        setError(`Quota mensuel atteint (${(data as { used?: number }).used ?? "?"}/${(data as { limit?: number }).limit ?? "?"} recherches). Passez à PREMIUM pour 200 recherches/mois.`);
         return;
       }
       if (!res.ok) {
-        const data = await res.json();
-        setError(data.error ?? "Erreur lors de la recherche.");
+        const data = isJson ? await res.json() : {};
+        setError((data as { error?: string }).error ?? "Erreur serveur. Veuillez réessayer.");
         return;
       }
 
-      const { searchId, deduplicated } = await res.json();
+      const { searchId, deduplicated } = await res.json() as { searchId: string; deduplicated: boolean };
       if (deduplicated) {
         await loadResult(searchId);
         return;
@@ -200,6 +203,9 @@ export function SearchClient({
           setPolling(false);
         }
       }, 2_000);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Erreur inattendue. Veuillez réessayer.");
+      }
     });
   }
 

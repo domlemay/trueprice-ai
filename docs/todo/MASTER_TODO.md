@@ -236,9 +236,17 @@
 - ✅ **Aucun résultat** — message affiché après 16s si tous les scrapers échouent (fix : status "pending" ≠ terminé)
 - ✅ **Clés API** — placeholders `.env` vidés (`AMAZON_PA_*`, `BESTBUY_US_API_KEY`) → guards key-gated fonctionnels
 - ✅ Polling réduit à 8×2s = 16s (était 15×2s = 30s) + threshold API 18s
+- ✅ `handleSearch` — `try/catch` global + vérification `content-type` avant `res.json()` → plus d'Unhandled Runtime Error
+- ✅ **Endpoint diagnostic** `/api/debug/scrapers?q=...` (dev only) — tous les scrapers testés en parallèle, statut/durée/erreur par scraper
+- ✅ **Scrapers robustes** (mai 2026) — Apple, Walmart CA/US, Best Buy CA réécrits :
+  - Apple : finder récursif `__NEXT_DATA__` + fallback JSON-LD, throw avec message précis
+  - Walmart CA/US : finder récursif `__NEXT_DATA__`, throw avec message précis (plus de `catch → []` silencieux)
+  - Best Buy CA : migration API→HTML scraping (API `/api/2.0/json/search` → 404 en mai 2026)
+- ✅ **SerpAPI branché au pipeline** (`google-shopping.ca` / `google-shopping.com`) — retourne [] si clé absente, actif si `SERPAPI_KEY` présente
+- ★ [ ] **Configurer `SERPAPI_KEY`** — clé gratuite sur [serpapi.com](https://serpapi.com/) → 100 recherches/mois, activer = résultats immédiats
 - [ ] Vérification stock suffisant (`stockSufficient = stockQty >= searchQuantity`)
 - [ ] Filtre : en stock seulement, livraison directe seulement
-- [ ] Clés API à configurer pour activer les scrapers : `AMAZON_PA_ACCESS_KEY/SECRET/PARTNER_TAG_CA/US`, `BESTBUY_US_API_KEY`, `SERPAPI_KEY`
+- [ ] Clés API à configurer : `AMAZON_PA_ACCESS_KEY/SECRET/PARTNER_TAG_CA/US`, `BESTBUY_US_API_KEY`, `SERPAPI_KEY`
 
 ### 2E — Rabais & Promotions ✅
 

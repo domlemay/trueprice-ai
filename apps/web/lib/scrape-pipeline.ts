@@ -1,14 +1,15 @@
 import { prisma } from "@trueprice-ai/db";
-import { searchBestBuyCA }                from "./scrapers/bestbuy-ca";
-import { searchBestBuyUS }                from "./scrapers/bestbuy-us";
-import { searchAppleStoreCA, searchAppleStoreUS } from "./scrapers/apple-store";
-import { searchAmazonCA, searchAmazonUS }  from "./scrapers/amazon-pa";
-import { searchWalmartCA }                 from "./scrapers/walmart-ca";
-import { searchWalmartUS }                 from "./scrapers/walmart-us";
-import { searchCostcoCA }                  from "./scrapers/costco-ca";
-import { calculateTruePrice }              from "./calculator";
-import { linkOfferToProduct }              from "./product-catalog";
-import type { ScrapedOffer }               from "./scrapers/types";
+import { searchBestBuyCA }                          from "./scrapers/bestbuy-ca";
+import { searchBestBuyUS }                          from "./scrapers/bestbuy-us";
+import { searchAppleStoreCA, searchAppleStoreUS }   from "./scrapers/apple-store";
+import { searchAmazonCA, searchAmazonUS }            from "./scrapers/amazon-pa";
+import { searchWalmartCA }                           from "./scrapers/walmart-ca";
+import { searchWalmartUS }                           from "./scrapers/walmart-us";
+import { searchCostcoCA }                            from "./scrapers/costco-ca";
+import { searchSerpApiShopping }                     from "./scrapers/serpapi";
+import { calculateTruePrice }                        from "./calculator";
+import { linkOfferToProduct }                        from "./product-catalog";
+import type { ScrapedOffer }                         from "./scrapers/types";
 
 type Geo = { country: string; province: string; currency: string };
 
@@ -17,15 +18,21 @@ type Geo = { country: string; province: string; currency: string };
 type ScraperFn = (query: string, limit: number) => Promise<ScrapedOffer[]>;
 
 const SCRAPERS: Record<string, ScraperFn> = {
-  "amazon.ca":   (q, n) => searchAmazonCA(q, n),
-  "amazon.com":  (q, n) => searchAmazonUS(q, n),
-  "bestbuy.ca":  (q, n) => searchBestBuyCA(q, n),
-  "bestbuy.com": (q, n) => searchBestBuyUS(q, n),
-  "apple.ca":    (q, n) => searchAppleStoreCA(q, n),
-  "apple.com":   (q, n) => searchAppleStoreUS(q, n),
-  "walmart.ca":  (q, n) => searchWalmartCA(q, n),
-  "walmart.com": (q, n) => searchWalmartUS(q, n),
-  "costco.ca":   (q, n) => searchCostcoCA(q, n),
+  // ── Direct scrapers (no key required) ───────────────────────────────────────
+  "apple.ca":              (q, n) => searchAppleStoreCA(q, n),
+  "apple.com":             (q, n) => searchAppleStoreUS(q, n),
+  "bestbuy.ca":            (q, n) => searchBestBuyCA(q, n),
+  "walmart.ca":            (q, n) => searchWalmartCA(q, n),
+  "walmart.com":           (q, n) => searchWalmartUS(q, n),
+  "costco.ca":             (q, n) => searchCostcoCA(q, n),
+  // ── Key-gated scrapers (silently skip if key absent) ────────────────────────
+  "bestbuy.com":           (q, n) => searchBestBuyUS(q, n),
+  "amazon.ca":             (q, n) => searchAmazonCA(q, n),
+  "amazon.com":            (q, n) => searchAmazonUS(q, n),
+  // ── SerpAPI fallback — covers any marketplace via Google Shopping ────────────
+  // Returns [] silently if SERPAPI_KEY is absent; no errors.
+  "google-shopping.ca":   (q, n) => searchSerpApiShopping({ query: q, limit: n, country: "ca" }),
+  "google-shopping.com":  (q, n) => searchSerpApiShopping({ query: q, limit: n, country: "us" }),
 };
 
 const ALL_SLUGS = Object.keys(SCRAPERS);
