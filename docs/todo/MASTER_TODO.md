@@ -109,7 +109,7 @@
 - ✅ `apps/web/app/api/webhooks/stripe/route.ts` — 8 événements gérés
 - ✅ `apps/web/app/api/checkout/route.ts` — Checkout Session (trial 14j, Stripe Tax, promo codes)
 - ✅ `apps/web/app/api/billing/portal/route.ts` — Stripe Customer Portal
-- ✅ `apps/web/app/dashboard/abonnement/page.tsx` + `PricingClient.tsx` (toggle mensuel/annuel, CAD)
+- ✅ `apps/web/app/dashboard/abonnement/page.tsx` + `PricingClient.tsx` — 2 sections : plan personnel + plans organisations (badge PLAN_BADGE par plan, lien facturation org)
 
 ### 1E — Stripe — Abonnements Organisations ✅
 
@@ -126,7 +126,9 @@
 - ✅ `apps/web/app/api/org/[orgId]/members/[userId]/route.ts` — PATCH rôle + DELETE membre
 - ✅ `apps/web/app/api/org/[orgId]/branches/route.ts` — GET + POST succursales
 - ✅ `apps/web/app/api/invitations/[token]/accept/route.ts` — ACID (vérif expiry + sièges)
-- ✅ Switcher org dans la navbar (`getUserOrgs` dans `dashboard/layout.tsx`)
+- ✅ `DashboardNav.tsx` — org switcher dropdown (check actif, router.push, "Gérer", "+ Créer")
+- ✅ `dashboard/layout.tsx` — server component pur, passe `orgs` + `currentPath` à `DashboardNav`
+- ✅ Bascule dark/light (next-themes `useTheme`), toggle FR/EN (localStorage), bouton déconnexion (`useClerk().signOut`)
 
 ### 1G — Sécurité & Sessions ✅
 
@@ -237,14 +239,16 @@
 ### 2D — Moteur de comparaison de prix 🔄 ★
 
 - ✅ `app/dashboard/recherche/page.tsx` + `SearchClient.tsx` — UI complète avec quota, polling, segment bar
-- ✅ `app/api/search/route.ts` — POST : quota → déduplication → create → Inngest dispatch
+- ✅ `app/api/search/route.ts` — POST : quota → déduplication → create → Inngest/fallback sync
 - ✅ `app/api/search/[id]/route.ts` — GET : polling résultats par searchId
-- ✅ `inngest/scrape-search.ts` — Fonction 3-steps retryable (stub Phase 3)
+- ✅ `inngest/scrape-search.ts` — Fonction `scrape/price-search` (retries: 3, délègue à `runScrapePipeline`)
+- ✅ `lib/scrape-pipeline.ts` — pipeline autonome (scraping 6 sources → résolution marketplace → calcul → save)
 - ✅ `app/api/inngest/route.ts` — Endpoint Inngest
 - ✅ `lib/calculator.ts` — `calculateTruePrice()` complet (change + douanes CUSMA + taxes provinciales)
 - ✅ `lib/duties.ts` — franchise 20 $ CAD, frais courtage DHL/UPS/FedEx par tranche
 - ✅ `lib/tax-rates.ts` — toutes provinces CA, 50 États US, EU — JSON statique
 - ✅ `packages/db/src/queries/searches.ts` — CRUD searches + quota check + déduplication
+- ⏳ Seed BD `Marketplace` — Amazon.ca/.com, Best Buy CA/US, Apple CA/US (bloquant pour offres non-null)
 - [ ] `lib/input-parsers.ts` — détection ASIN/SKU/URL/UPC depuis la query
 - [ ] Sélecteur adresse de livraison dans la barre de recherche
 - [ ] Sélecteur marketplaces (filtrer selon marché user)
@@ -301,36 +305,30 @@
   - `recordPriceHistory(variantId, marketplaceId, price, currency)`
   - Utilisé pour `priceLowest30d`, graphique historique, alertes
 
-### 2G — Favoris & Listes produits ⏳ 🔒 (dépend 2D)
+### 2G — Favoris & Listes produits 🔄
 
-- [ ] Bouton "Favori" ♡ sur chaque carte produit
-  - Créer/supprimer `Favorite` avec tags optionnels
-  - Page `/dashboard/favoris` — grille de favoris avec dernière recherche de prix
+- ✅ `packages/db/src/queries/favorites.ts` — `addFavorite`, `removeFavorite`, `getUserFavorites`, `updateFavoriteTags`
+- ✅ `app/api/favorites/route.ts` — GET list + POST create
+- ✅ `app/api/favorites/[id]/route.ts` — DELETE + PATCH tags
+- ✅ `app/dashboard/favoris/page.tsx` + `FavorisClient.tsx` — grille favoris, suppression, lien recherche, tags
+- [ ] Bouton "Favori" ♡ sur chaque carte résultat de recherche (lier au POST /api/favorites)
 - [ ] Listes produits (`ProductList`)
   - Page `/dashboard/listes`
   - Créer liste (nom, type : STANDARD / RECURRING / PROJECT, tags)
-  - Ajouter/retirer items (produit existant ou requête libre)
-  - Réordonner items par drag-and-drop
-  - Partager liste avec équipe (`isShared`) — ENTERPRISE
-- [ ] Listes récurrentes (RECURRING)
-  - Configurer `recurrenceDays` (7 = hebdo, 30 = mensuel, etc.)
-  - `autoNotify = true` → notif quand nouvelle recherche disponible
-  - Job cron lance les recherches automatiquement à `nextRunAt` (voir JOBS)
-- [ ] Listes projet (PROJECT)
-  - Ex: "Montage PC gaming" — tous les composants avec vrai coût total cumulé
-  - Afficher somme `truePriceTotal` de tous les items
+  - Ajouter/retirer items, drag-and-drop, partage équipe
+- [ ] Listes récurrentes (RECURRING) — cron `run-recurring-lists`
+- [ ] Listes projet (PROJECT) — somme `truePriceTotal` cumulée
 
-### 2H — Alertes prix & stock ⏳ 🔒 (dépend 2D + système notif)
+### 2H — Alertes prix & stock 🔄
 
-- [ ] Interface alertes prix (`/dashboard/alertes`)
-  - Créer alerte : produit, prix cible, devise, marketplaces à surveiller
-  - Limite selon plan (FREE: 3, PREMIUM: 20, ENTERPRISE: illimité)
-  - Afficher alertes actives + déclenchées
-- [ ] Interface alertes stock
-  - Créer alerte de retour en stock (produit + marketplaces)
-- [ ] Job cron vérification alertes (toutes les heures) — voir JOBS
+- ✅ `packages/db/src/queries/alerts.ts` — `ALERT_LIMITS`, quota check, CRUD price + stock alerts
+- ✅ `app/api/alerts/route.ts` — GET (price + stock) + POST avec quota
+- ✅ `app/api/alerts/[id]/route.ts` — DELETE + PATCH (toggle actif)
+- ✅ `app/dashboard/alertes/page.tsx` + `AlertesClient.tsx` — UI complète (toggle, delete, empty states, plan badge)
+- [ ] Job cron `check-price-alerts` — vérif toutes les heures → voir JOBS
+- [ ] Job cron `check-stock-alerts` — vérif toutes les heures → voir JOBS
 - [ ] Envoi notification quand déclenché : `triggeredAt = now()` + `isActive = false`
-  - Canal selon `NotificationPreference` : email, in-app, SMS, push
+  - Canal selon `NotificationPreference` : email (Resend), in-app, SMS, push
 
 ### 2I — Partage & Collaboration ⏳ 🔒 (dépend 2D)
 
@@ -390,25 +388,21 @@
 - [ ] Créer compte Firecrawl (activer en prod quand volume > 50 scrapes/jour)
 - [ ] Ajouter toutes les clés dans `.env` : `SERPAPI_KEY`, `EXA_API_KEY`, `FIRECRAWL_API_KEY`, `AMAZON_PA_*`
 
-### 3B — Sources par marketplace ⏳ 🔒 (dépend 3A)
+### 3B — Sources par marketplace 🔄
 
 **Canada :**
 
-- [ ] Amazon.ca — Amazon PA API (ASIN, prix, prime, stock)
-  - Parser : price, originalPrice, primeEligible, isInStock, discounts (coupon clipper, lightning deal)
-- [ ] Best Buy Canada — `https://api.bestbuy.ca/search` (JSON non documenté mais stable)
-  - Parser : regularPrice, salePrice, isAvailable, skuId
+- ✅ Amazon.ca — `lib/scrapers/amazon-pa.ts` (PA API, Sig V4 maison, key-gated)
+- ✅ Best Buy Canada — `lib/scrapers/bestbuy-ca.ts` (API JSON public)
 - [ ] Costco.ca — Crawlee/Playwright (pas d'API publique)
-  - Parser : price, memberPrice, isAvailable
-- [ ] Apple Store Canada — JSON interne Apple
-  - Parser : price, monthlyPrice, tradeInValue, educationPrice
+- ✅ Apple Store Canada — `lib/scrapers/apple-store.ts` (JSON interne Apple, FAMILY_MAP 25+ regex)
 - [ ] Walmart.ca — Walmart Open API ou Crawlee fallback
 
 **USA :**
 
-- [ ] Amazon.com — PA API (même compte affilié, `marketplace: "www.amazon.com"`)
-- [ ] Best Buy US — `https://api.bestbuy.com/v1` (clé gratuite)
-- [ ] Apple Store US — API JSON (même structure que CA)
+- ✅ Amazon.com — `lib/scrapers/amazon-pa.ts` (`marketplace: "www.amazon.com"`)
+- ✅ Best Buy US — `lib/scrapers/bestbuy-us.ts` (key-gated `BESTBUY_US_API_KEY`)
+- ✅ Apple Store US — `lib/scrapers/apple-store.ts` (même fichier que CA)
 - [ ] Walmart.com — Walmart Open API (clé gratuite)
 
 **Europe :**
@@ -416,34 +410,21 @@
 - [ ] Amazon.fr / .de / .co.uk — PA API (marketplace EU)
 - [ ] Étendre selon demande utilisateurs (Google Trends pour prioriser)
 
-### 3C — Infrastructure de scraping (`apps/worker`) ⏳ 🔒 (dépend 3B)
+### 3C — Infrastructure de scraping 🔄
 
 > **Jobs : Inngest** (serverless-native, steps retryables, UI dashboard gratuit, parfait Vercel)
 
-- [ ] Installer Inngest SDK : `@inngest/next` dans `apps/web`, `inngest` dans `packages/shared`
-- [ ] `packages/shared/src/inngest.ts` — client Inngest singleton
-- [ ] Fonction Inngest `scrape/price-search` :
-  - Step 1 : vérifier cache Upstash Redis (`price:{marketplace}:{sku}` · TTL 6h)
-  - Step 2 (si cache miss) : dispatcher scrape par marketplace en parallèle
-  - Step 3 : agréger résultats + appeler calculateur
-  - Step 4 : sauvegarder `ProductOffer[]` en BD + notifier client via SSE/polling
-  - Retry automatique x3 par step avec backoff exponentiel (Inngest natif)
-- [ ] MVP scraper : Crawlee (`packages/scraper/src/crawlee/`)
-  - `PlaywrightCrawler` pour Costco/Walmart
-  - `CheerioCrawler` pour pages légères
-  - Rotation user-agent + delays aléatoires respectueux
-- [ ] Prod scraper : Firecrawl (`packages/scraper/src/firecrawl/`)
-  - `POST https://api.firecrawl.dev/v1/scrape` — activer quand volume > 50/jour
-  - Feature flag env `USE_FIRECRAWL=true` pour basculer sans code
-- [ ] Cache Upstash Redis :
-  - `price:{marketplace}:{asin_or_sku}` · TTL 6h
-  - `exchange:{from}:{to}` · TTL 24h
-  - Cache hit → retourner + flag `cached: true`
-- [ ] Fallback : si scraping échoue → retourner cache + `stale: true`
-- [ ] Monitoring parsers (`MarketplaceStatusLog`)
-  - Enregistrer chaque échec dans Inngest event log + BD
-  - Si taux d'échec > 10 % sur 1h → `Marketplace.status = DEGRADED`
-  - Si 100 % échec → `Marketplace.status = DOWN` + alerte admin
+- ✅ `packages/shared/src/inngest.ts` — client Inngest singleton (`new Inngest({ id: "trueprice-ai" })`)
+- ✅ `apps/web/app/api/inngest/route.ts` — endpoint Inngest (serve handler)
+- ✅ `apps/web/inngest/scrape-search.ts` — fonction `scrape/price-search` (retries: 3)
+- ✅ `apps/web/lib/scrape-pipeline.ts` — pipeline partagé (scraping → marketplaces → calcul → sauvegarde)
+- ✅ Fallback synchrone : si `INNGEST_SIGNING_KEY` absent → `void runScrapePipeline(...)` en background
+- ✅ `dev:inngest` script — `npx inngest-cli@latest dev -u http://localhost:3000/api/inngest` (port 8288)
+- ✅ `dev:full` script (root) — Next.js + Inngest CLI simultanément via `concurrently`
+- [ ] Cache Upstash Redis par SKU (`price:{marketplace}:{sku}` · TTL 6h) — Redis optionnel en dev
+- [ ] Crawlee (`PlaywrightCrawler`) pour Costco.ca / Walmart — Phase ultérieure
+- [ ] Firecrawl API fallback (`USE_FIRECRAWL=true`) — activer si volume > 50 scrapes/jour
+- [ ] Monitoring parsers (`MarketplaceStatusLog`) — `Marketplace.status = DEGRADED/DOWN` si taux échec > 10 %
 
 ### 3D — Parsing des rabais par source ⏳ 🔒 (dépend 3C)
 
@@ -617,24 +598,23 @@
 
 > Système de notification multi-canal unifié. Tous les envois passent par `lib/notifications.ts`.
 
-### 6A — Service email ⏳
+### 6A — Service email ⏳ ★ PROCHAINE ÉTAPE
 
-- [ ] Choisir service email : **Resend** (recommandé — bonne DX, 100 emails/j gratuit)
-  - Alternative : SendGrid, Postmark
+- ✅ Service choisi : **Resend** (100 emails/j gratuit, React Email, domaine custom)
+- [ ] Créer compte Resend + ajouter `RESEND_API_KEY` dans `.env`
 - [ ] Configurer domaine `@truepricai.ca` dans Resend (SPF, DKIM, DMARC)
-- [ ] Ajouter `RESEND_API_KEY` dans `.env`
 - [ ] `lib/email.ts` — `sendEmail(to, template, data)` via Resend SDK
 - [ ] Templates email (React Email) :
+  - Alerte prix déclenchée ← priorité (lié à 2H)
+  - Alerte stock déclenchée ← priorité (lié à 2H)
   - Invitation organisation
-  - Alerte prix déclenchée
-  - Alerte stock déclenchée
-  - Rapport hebdomadaire / mensuel
   - Fin d'essai imminente (3j avant)
   - Paiement échoué
+  - Bienvenue post-inscription
   - Confirmation suppression compte (RGPD)
   - Export données prêt
+  - Rapport hebdomadaire / mensuel
   - Partage de résultat reçu
-  - Bienvenue post-inscription
   - Changelog (si PREMIUM+)
 
 ### 6B — Notifications in-app ⏳
@@ -796,8 +776,8 @@
 | `purge-expired-invitations` | Quotidien | Supprimer `OrganizationInvitation` expirées |
 | `send-trial-ending-emails` | Quotidien | Email si `trialEndsAt` dans 3 jours |
 
-- [ ] Choisir le service cron (Vercel Cron pour MVP, Cloudflare Workers pour scale)
-- [ ] `apps/worker/src/jobs/` — un fichier par job
+- ✅ Service choisi : **Inngest** (crons + scheduled functions, serverless-native)
+- ⏳ `apps/web/inngest/jobs/` — fichiers cron Inngest (à implémenter par priorité)
 - [ ] Logging de chaque exécution (`UsageLog` action = "cron:*")
 - [ ] Alertes admin si job échoue 3× de suite
 
@@ -814,10 +794,10 @@
 - ✅ Relations bidirectionnelles vérifiées
 - ✅ `db:generate` — Prisma Client généré (v6.19.3)
 - ✅ `db:push` — tables créées sur Neon (neondb, us-east-1, 5,75s)
-- ⏳ `packages/db/src/index.ts` — exports + singleton client
-- ⏳ `packages/db/src/queries/` — helpers par domaine
-- ⏳ Seed initial : TaxRate + DutyRate (taux officiels)
-- ⏳ Seed initial : Marketplace (Amazon.ca/.com, Best Buy CA/US, Apple CA/US, Walmart, Costco)
+- ✅ `packages/db/src/index.ts` — exports + singleton client (queries users, orgs, subscriptions, searches, favorites, alerts)
+- ✅ `packages/db/src/queries/` — helpers par domaine complets
+- ⏳ Seed `Marketplace` — Amazon.ca/.com, Best Buy CA/US, Apple CA/US (bloquant pour `marketplaceId` non-null)
+- ⏳ Seed `TaxRate` + `DutyRate` — taux officiels (déjà dans `lib/tax-rates.ts` JSON statique)
 - ⏳ `npm run db:migrate` — migration versionnée (avant production)
 
 ---

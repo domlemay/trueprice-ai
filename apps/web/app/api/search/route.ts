@@ -4,6 +4,13 @@ import type { NextRequest } from "next/server";
 import { prisma, createSearch, deduplicateSearch, checkSearchQuota, incrementSearchCount } from "@trueprice-ai/db";
 import { getUserMarket } from "@/lib/geo";
 import { inngest } from "@trueprice-ai/shared";
+import { runScrapePipeline } from "@/lib/scrape-pipeline";
+
+// Inngest est configuré si la clé de signature n'est pas un placeholder
+const inngestConfigured =
+  !!process.env.INNGEST_SIGNING_KEY &&
+  !process.env.INNGEST_SIGNING_KEY.startsWith("VOTRE_") &&
+  process.env.INNGEST_SIGNING_KEY !== "placeholder";
 
 export async function POST(req: NextRequest) {
   const { userId: clerkId } = await auth();
@@ -57,14 +64,25 @@ export async function POST(req: NextRequest) {
 
   await incrementSearchCount(user.id);
 
-  // Déclencher le job de scraping — optionnel si Inngest n'est pas encore configuré
-  try {
-    await inngest.send({
-      name: "scrape/price-search",
-      data: { searchId: search.id, query, geo },
-    });
-  } catch {
-    // Inngest non configuré en dev — la recherche est créée, les résultats arriveront en Phase 3
+  if (inngestConfigured) {
+    // Inngest disponible — déléguer au job de scraping (Inngest local dev ou prod)
+    try {
+      await inngest.send({
+        name: "scrape/price-search",
+        data: { searchId: search.id, query, geo },
+      });
+    } catch (err) {
+      // Echec inattendu → fallback synchrone
+      console.warn("[search] inngest.send failed, falling back to sync scrape:", err);
+      void runScrapePipeline({ searchId: search.id, query, geo }).catch(
+        (e) => console.error("[search] sync scrape error:", e),
+      );
+    }
+  } else {
+    // Mode dev sans Inngest — scraping synchrone en arrière-plan
+    void runScrapePipeline({ searchId: search.id, query, geo }).catch(
+      (e) => console.error("[search] sync scrape error:", e),
+    );
   }
 
   return NextResponse.json({ searchId: search.id, deduplicated: false }, { status: 201 });

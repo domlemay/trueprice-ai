@@ -8,12 +8,14 @@
   ],
   "scripts": {
     "dev": "turbo run dev",
+    "dev:full": "concurrently -n next,inngest -c cyan,yellow \"turbo run dev\" \"npm run dev:inngest -w @trueprice-ai/web\"",
     "build": "turbo run build",
     "start": "turbo run start",
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck"
   },
   "devDependencies": {
+    "concurrently": "^9.1.2",
     "dotenv-cli": "^11.0.0",
     "turbo": "^2.5.4"
   },
