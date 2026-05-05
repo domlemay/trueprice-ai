@@ -7,7 +7,7 @@ export async function GET() {
   if (!clerkId) return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
 
   const user = await prisma.user.findUnique({ where: { clerkId }, select: { id: true } });
-  if (!user) return NextResponse.json({ error: "Introuvable" }, { status: 404 });
+  if (!user) return NextResponse.json({ notifications: [], unreadCount: 0 });
 
   const [notifications, unreadCount] = await Promise.all([
     getUserNotifications(user.id, 30),
@@ -33,7 +33,7 @@ export async function PATCH() {
   if (!clerkId) return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
 
   const user = await prisma.user.findUnique({ where: { clerkId }, select: { id: true } });
-  if (!user) return NextResponse.json({ error: "Introuvable" }, { status: 404 });
+  if (!user) return NextResponse.json({ ok: true });
 
   await markAllNotificationsRead(user.id);
   return NextResponse.json({ ok: true });

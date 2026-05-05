@@ -1,4 +1,4 @@
-import { auth } from "@clerk/nextjs/server";
+import { auth, currentUser } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { prisma, getUserOrgs } from "@trueprice-ai/db";
 import { CookieBanner } from "@/components/CookieBanner";
@@ -12,10 +12,40 @@ export default async function DashboardLayout({
   const { userId } = await auth();
   if (!userId) redirect("/sign-in");
 
-  const user = await prisma.user.findUnique({
+  let user = await prisma.user.findUnique({
     where:  { clerkId: userId },
     select: { id: true, onboardingCompletedAt: true },
   });
+
+  // En dev local le webhook Clerk ne se déclenche pas sans tunnel ngrok.
+  // Si l'utilisateur existe dans Clerk mais pas en BD, on le crée automatiquement.
+  if (!user) {
+    const clerkUser = await currentUser();
+    const email = clerkUser?.emailAddresses[0]?.emailAddress;
+    if (clerkUser && email) {
+      try {
+        user = await prisma.user.upsert({
+          where:  { clerkId: userId },
+          create: {
+            clerkId:              userId,
+            email,
+            name:                 [clerkUser.firstName, clerkUser.lastName].filter(Boolean).join(" ") || null,
+            avatarUrl:            clerkUser.imageUrl || null,
+            onboardingCompletedAt: new Date(), // compte déjà actif, skip onboarding
+          },
+          update: {},
+          select: { id: true, onboardingCompletedAt: true },
+        });
+      } catch {
+        // Race condition — re-lire
+        user = await prisma.user.findUnique({
+          where:  { clerkId: userId },
+          select: { id: true, onboardingCompletedAt: true },
+        });
+      }
+    }
+  }
+
   if (user && !user.onboardingCompletedAt) redirect("/onboarding");
 
   const orgs = user ? await getUserOrgs(user.id) : [];
