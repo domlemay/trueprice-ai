@@ -1,43 +1,5 @@
 import { prisma } from "./index";
-
-async function seedMarketplaces() {
-  const marketplaces = [
-    // ── Amazon ──────────────────────────────────────────────────────────────
-    { name: "Amazon Canada",      slug: "amazon.ca",     url: "https://www.amazon.ca",      country: "CA", currency: "CAD" },
-    { name: "Amazon États-Unis",  slug: "amazon.com",    url: "https://www.amazon.com",     country: "US", currency: "USD" },
-    { name: "Amazon France",      slug: "amazon.fr",     url: "https://www.amazon.fr",      country: "FR", currency: "EUR" },
-    { name: "Amazon Allemagne",   slug: "amazon.de",     url: "https://www.amazon.de",      country: "DE", currency: "EUR" },
-    { name: "Amazon Royaume-Uni", slug: "amazon.co.uk",  url: "https://www.amazon.co.uk",   country: "GB", currency: "GBP" },
-    // ── Best Buy ─────────────────────────────────────────────────────────────
-    { name: "Best Buy Canada",    slug: "bestbuy.ca",    url: "https://www.bestbuy.ca",     country: "CA", currency: "CAD" },
-    { name: "Best Buy États-Unis",slug: "bestbuy.com",   url: "https://www.bestbuy.com",    country: "US", currency: "USD" },
-    // ── Apple ────────────────────────────────────────────────────────────────
-    { name: "Apple Store Canada", slug: "apple.ca",      url: "https://www.apple.com/ca",   country: "CA", currency: "CAD" },
-    { name: "Apple Store US",     slug: "apple.com",     url: "https://www.apple.com",      country: "US", currency: "USD" },
-    // ── Walmart ──────────────────────────────────────────────────────────────
-    { name: "Walmart Canada",     slug: "walmart.ca",    url: "https://www.walmart.ca",     country: "CA", currency: "CAD" },
-    { name: "Walmart États-Unis", slug: "walmart.com",   url: "https://www.walmart.com",    country: "US", currency: "USD" },
-    // ── Costco ───────────────────────────────────────────────────────────────
-    { name: "Costco Canada",      slug: "costco.ca",     url: "https://www.costco.ca",      country: "CA", currency: "CAD" },
-    // ── Bureau en Gros ───────────────────────────────────────────────────────
-    { name: "Bureau en Gros",     slug: "bureauengros.com", url: "https://www.bureauengros.com", country: "CA", currency: "CAD" },
-    // ── Épiceries Québec ─────────────────────────────────────────────────────
-    { name: "Super C",            slug: "superc.ca",     url: "https://www.superc.ca",      country: "CA", currency: "CAD" },
-    { name: "Metro",              slug: "metro.ca",      url: "https://www.metro.ca",       country: "CA", currency: "CAD" },
-    { name: "IGA",                slug: "iga.net",       url: "https://www.iga.net",        country: "CA", currency: "CAD" },
-    { name: "Maxi",               slug: "maxi.ca",       url: "https://www.maxi.ca",        country: "CA", currency: "CAD" },
-  ];
-
-  for (const m of marketplaces) {
-    await prisma.marketplace.upsert({
-      where:  { slug: m.slug },
-      update: { name: m.name, url: m.url, country: m.country, currency: m.currency },
-      create: { ...m, status: "OPERATIONAL", isActive: true },
-    });
-  }
-
-  console.log(`✅ ${marketplaces.length} marketplaces seedées`);
-}
+import { seedMarketplaces } from "./seed/marketplaces";
 
 async function seedTaxRates() {
   const now = new Date("2025-01-01");
